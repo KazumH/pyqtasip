@@ -1,0 +1,45 @@
+import csv
+
+def Nodedatagenerate(targetdir, dirnum, data):
+    print("Writing in data/csv/TTNet/%d/nodes.csv" % dirnum)
+    csvfile = open('../data/csv/TTNet/%d/nodes.csv' % dirnum, 'w', newline='')
+    writer = csv.writer(csvfile, lineterminator='\n')
+    for AS in data:
+        writer.writerow([AS])
+    csvfile.close()
+
+#data[0] = []で、なぜか消せないのでdata[1]から
+def Edgedatagenerate(targetdir, dirnum, data):
+    targetpath = "../data/csv" + targetdir + str(dirnum) + "/nonweightededges.csv"
+    print("Writing in %s" % targetpath)
+    csvfile = open('%s' % targetpath, 'w', newline='')
+    writer = csv.writer(csvfile, lineterminator='\n')
+    for i in range(1, len(data)):
+        writer.writerow(data[i])
+    csvfile.close()
+
+def WeightedEdgedatagenerate(targetdir, dirnum, data):
+    print("Writing in data/csv/TTNet/%d/edges.csv" % dirnum)
+    csvfile = open('../data/csv/TTNet/%d/edges.csv' % dirnum, 'w', newline='')
+    writer = csv.writer(csvfile, lineterminator='\n')
+    for i in range(0, len(data)):
+        writer.writerow(data[i])
+    csvfile.close()
+
+def OverallNodedatagenerate(targetdir, data):
+    targetpath = "../data/csv/" + targetdir + "overall/edges.csv"
+    print("Writing in %s" % targetpath)
+    csvfile = open('%s' % targetpath, 'w', newline='')
+    writer = csv.writer(csvfile, lineterminator='\n')
+    for i in range(1, len(data)):
+        writer.writerow(data[i])
+    csvfile.close()
+
+def OverallEdgedatagenerate(targetdir, data):
+    targetpath = "../data/csv/" + targetdir + "overall/nodes.csv"
+    print("Writing in %s" % targetpath)
+    csvfile = open('%s' % targetpath, 'w', newline='')
+    writer = csv.writer(csvfile, lineterminator='\n')
+    for i in range(1, len(data)):
+        writer.writerow(data[i])
+    csvfile.close()
