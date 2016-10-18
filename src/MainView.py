@@ -33,6 +33,7 @@ class MainWindow(QWidget):
         # いろんな設定した図形アイテムを追加するとき
         self.node = NodeLinkScene.Node()
         nodelinkscene.addItem(self.node)
+
         # 直接アイテムを追加するとき
         """
         self.testnode =  QGraphicsEllipseItem(100, 100, 200, 100)
@@ -42,9 +43,10 @@ class MainWindow(QWidget):
         """
 
 # ノードリンクビューの脇につけるボタンやスライダー
+        #ボタン
         self.testButton = QPushButton("test")
         self.testButton.clicked.connect(self.testButtonClicked)
-
+        #スライダー
         self.weightfilterSlider = QSlider(Qt.Horizontal)
         self.weightfilterSlider.setMinimum(0)
         self.weightfilterSlider.setMaximum(100)

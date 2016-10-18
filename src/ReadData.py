@@ -66,6 +66,8 @@ def readupdatedata(targetdir, filelist):
         alllinks = [[]]  # []にするとnumpy.sortがうまく働かなくなる。data[0] = []となる。ここで初期化しないと各ファイルそれぞれのデータが分けられなくなる
         allASes = [] #1ファイル分の集計先
         target = "../data/updates/" + targetdir + filelist[fileindex]
+        current_file = filelist[fileindex]
+        current_minute = current_file[-2:len(current_file)] # ファイル名のしも二桁を開始分とする
         print("Reading ", target)
         for line in open("%s" % target, "r"):
             word = line.split("|")
@@ -79,13 +81,29 @@ def readupdatedata(targetdir, filelist):
                 文...
             とやると、可読性上がる
             """
-            #アナウンス
+#アナウンス
             if word[2] == "A":
                 ip = word[5].split("/")
                 prefixes.append(word[5]) # 131.112.0.0/16
                 prefix_value = ip[1] # 16
-                time = word[1] #月/日/年
+
+                #時間(str型)
+                #月/日/年
+                year = word[1].split(" ")[0].split("/")[2]
+                month = word[1].split(" ")[0].split("/")[0]
+                day = word[1].split(" ")[0].split("/")[1]
+                #時:分:秒
+                time = word[1].split(" ")[1].split(":")[0]
+                minute = word[1].split(" ")[1].split(":")[1]
+                second = word[1].split(" ")[1].split(":")[2]
+                # タイムスタンプ型
                 #timestamp = int(time.mktime( datetime.strptime(dtime,"%Y-%m-%d %H:%M:%S").timetuple()))
+
+
+                #分が新しく切り替わったら
+                if current_minute != minute:
+                    current_minute = minute
+
                 router = word[3]
                 receive_AS = word[4]
                 ASpath = word[6] # [13 11 290]
@@ -114,8 +132,7 @@ def readupdatedata(targetdir, filelist):
                         overalllinks.append([ASlist[i], ASlist[i+1]]) #全ファイル分集計するためのリンク
                     else:
                         continue
-
-            #取り消し
+#取り消し
             elif word[2] == "W":
                 ip = word[5].split("/")
                 prefixes.append(word[5].rstrip("\n")) # 131.112.0.0/16

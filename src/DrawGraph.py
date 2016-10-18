@@ -100,6 +100,8 @@ def draw(targetdir, num_of_files):
     #for i in range(9):
     #    G.add_nodes_from(list_of_nodelist[i])
 
+    #
+    picklededge = G.edges(data = True)
 #ノーど分別
     """ Youtubepakistan用
     nodeset1 = set(list_of_nodelist[0]) #{'1', '2', '3'}
@@ -137,13 +139,18 @@ def draw(targetdir, num_of_files):
     print("Drawing Graph...")
     start_time = time.time()
 
-    #ばねモデル(Fruchterman-Reingold)で計算したnetworkxの位置情報オブジェクトをファイルへ保存(毎回位置計算は無駄)
-    #辞書(ノードキーとポジション)が帰ってくる
+#ばねモデル(Fruchterman-Reingold)で計算したnetworkxの位置情報オブジェクトをファイルへ保存(毎回位置計算は無駄)
+#辞書(ノードキーとポジション)が帰ってくる
+#ノードのピクル
     #pos = nx.spring_layout(G)
-    #picklefile = open("../data/pickles/20041224.0816-20041224.1018.pickle", mode="wb")
+    #picklefile = open("../data/pickles/n.20041224.0816-20041224.1018.pickle", mode="wb")
     #pickle.dump(pos, picklefile)
 
-    #位置情報オブジェクトファイルを読み込む(これで以前計算した位置情報を使いまわせる)
+#エッジのピクル
+    picklefile = open("../data/pickles/e.20041224.0816-20041224.1018.pickle", mode="wb")
+    pickle.dump(picklededge, picklefile)
+
+#エッジのみ
     picklefile = open("../data/pickles/20041224.0816-20041224.1018.pickle", mode="rb")
     pos = pickle.load(picklefile)
 
