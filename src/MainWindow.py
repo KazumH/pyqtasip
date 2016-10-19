@@ -9,7 +9,7 @@ from PyQt5.QtCore import (QLineF, QPointF, QRectF, Qt, QTimer)
 from PyQt5.QtGui import (QBrush, QColor, QPainter, QIntValidator, QPixmap, QTransform, QCursor)
 from PyQt5.QtWidgets import (QApplication, QWidget, QMainWindow, QGraphicsView, QGraphicsScene, QGraphicsItem, QGraphicsEllipseItem,
                              QGridLayout, QVBoxLayout, QHBoxLayout, QGraphicsPixmapItem, qApp,
-                             QLabel, QLineEdit, QPushButton, QSlider, QSizePolicy)
+                             QLabel, QLineEdit, QPushButton, QSlider, QCheckBox,QSizePolicy)
 
 import ActivityPlot
 import NodeLinkScene
@@ -44,24 +44,50 @@ class MainWindow(QWidget):
 
 # ノードリンクビューの脇につけるボタンやスライダー
         #ボタン
-        self.testButton = QPushButton("test")
-        self.testButton.clicked.connect(self.testButtonClicked)
-        #スライダー
+        self.nextButton = QPushButton("Next >")
+        self.nextButton.clicked.connect(self.nextButtonClicked)
+        self.previousButton = QPushButton("< Previous")
+        self.previousButton.clicked.connect(self.previousButtonClicked)
+        #スライダー周り
         self.weightfilterSlider = QSlider(Qt.Horizontal)
         self.weightfilterSlider.setMinimum(0)
-        self.weightfilterSlider.setMaximum(100)
+        self.weightfilterSlider.setMaximum(10000)
         self.weightfilterSlider.setValue(50)
-        self.weightfilterSlider.setTickInterval(1)
+        self.weightfilterSlider.setTickInterval(5)
         self.weightfilterSlider.valueChanged.connect(self.valuechanged)
+        self.th = QLabel("Weight Th")
+        self.thTextBox = QLineEdit()
+        self.thTextBox.setFixedWidth(40)
+        #チェックボックス
+        self.update = QCheckBox("Updates")
+        self.update.setChecked(True)
+        self.withdrawal = QCheckBox("Withdrawals")
 
 #プロットず
-        self.activityplot = ActivityPlot.ActivityPlot(self, width=5, height=4)
+        self.activityplot = ActivityPlot.ActivityPlot(self)
 
-#左側のレイアウト用の箱に追加
+#ボタンレイアウト
+        buttonLayout = QHBoxLayout()
+        buttonLayout.addWidget(self.previousButton)
+        buttonLayout.addWidget(self.nextButton)
+
+#チェックボックスレイアウト
+        checkboxLayout = QHBoxLayout()
+        checkboxLayout.addWidget(self.update)
+        checkboxLayout.addWidget(self.withdrawal)
+
+#スライダー周りのレイアウト
+        sliderLayout = QHBoxLayout()
+        sliderLayout.addWidget(self.th)
+        sliderLayout.addWidget(self.weightfilterSlider)
+        sliderLayout.addWidget(self.thTextBox)
+
+#左側のレイアウト用の箱に追加(上から順に上に)
         widgetLayout = QVBoxLayout()
+        widgetLayout.addLayout(checkboxLayout)
         widgetLayout.addWidget(self.activityplot)
-        widgetLayout.addWidget(self.testButton)
-        widgetLayout.addWidget(self.weightfilterSlider)
+        widgetLayout.addLayout(sliderLayout)
+        widgetLayout.addLayout(buttonLayout)
 
 
 # 全体(左側の箱 + 中央 + 右側の箱)レイアウト
@@ -72,13 +98,17 @@ class MainWindow(QWidget):
         mainLayout.addWidget(self.graphicsView)
         self.setLayout(mainLayout)
 
+# ボタンクリック
+    def nextButtonClicked(self):
+        self.node.do_next()
 
-    def testButtonClicked(self):
-        print("Test Button Clicked!!")
+    def previousButtonClicked(self):
+        self.node.do_back()
 
+# スライダ移動
     def valuechanged(self):
         currentvalue = self.weightfilterSlider.value()
-        print("Slider !!", currentvalue)
+        self.node.thresholdchanged(currentvalue)
 
 def run():
     myapp = QApplication(sys.argv)

@@ -3,7 +3,7 @@ from PyQt5.QtCore import *
 import ReadData
 import DrawGraph
 import subprocess
-import MainView
+import MainWindow
 
 #各事件
 youtubepakistan = "YoutubePakistan/" #ファイル数: 4
@@ -32,7 +32,7 @@ def run():
     #DrawGraph.draw(ttnet, number_of_files) #15分間分のファイル 4つ分読み込んでグラフへ
 
 # PyQt5のシステム起動
-    MainView.run()
+    MainWindow.run()
 
 if __name__ == "__main__":
     run()
