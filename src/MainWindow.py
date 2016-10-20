@@ -54,9 +54,9 @@ class MainWindow(QWidget):
 
 # ノードリンクビューの脇につけるボタンやスライダー
         #ボタン
-        nbtn = self.nextButton = QPushButton("Next >")
+        nbtn = self.nextButton = QPushButton("次の時間窓 >")
         nbtn.clicked.connect(self.nextButtonClicked)
-        pbtn = self.previousButton = QPushButton("< Previous")
+        pbtn = self.previousButton = QPushButton("< 前の時間窓")
         pbtn.clicked.connect(self.previousButtonClicked)
         #スライダー周り
         wsldr= self.weightfilterSlider = QSlider(Qt.Horizontal)

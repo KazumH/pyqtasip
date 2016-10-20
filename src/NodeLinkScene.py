@@ -2,9 +2,9 @@
 import pickle
 
 from PyQt5.QtCore import (QLineF, QPointF, QRectF, Qt, QTimer)
-from PyQt5.QtGui import (QBrush, QColor, QPainter, QIntValidator, QPixmap, QTransform, QCursor)
+from PyQt5.QtGui import (QBrush, QColor, QPen, QPainter, QPainterPath, QIntValidator, QPixmap, QTransform, QCursor)
 from PyQt5.QtWidgets import (QApplication, QWidget, QMainWindow, QGraphicsView, QGraphicsScene, QGraphicsItem, QGraphicsEllipseItem,
-                             QGridLayout, QVBoxLayout, QHBoxLayout, QGraphicsPixmapItem, qApp,
+                             QGraphicsPixmapItem, qApp,
                              QLabel, QLineEdit, QSizePolicy)
 
 import networkx as nx
@@ -67,8 +67,9 @@ class Node(QGraphicsItem):
     def paint(self, painter, option, widget):
 
 #ノード描画
-        painter.setPen(QColor.fromHsvF(330 / 360, 1, 1))
-
+        painter.setPen(QColor.fromHsvF(330 / 360, 0.5, 1))
+        painter.setBrush(QColor.fromHsvF(330 / 360, 0.5, 1))
+        painter.setRenderHint(QPainter.Antialiasing)
 
         for node in pos.values():
             #node = pos["701"]
@@ -77,7 +78,7 @@ class Node(QGraphicsItem):
             #x、yは 0 〜 1を取る400 * 600のビュー内に出すには 600 * x、400 * y、をしてやればpyplotと同じ座標になるはず
             x *= viewwidth
             y *= viewheight
-            painter.drawEllipse(QPointF(x, y), 5, 5) #QPointFは浮動小数点制度の平面上の店を定義するクラス
+            painter.drawEllipse(QPointF(x, y), 2.5, 2.5) #QPointFは浮動小数点制度の平面上の店を定義するクラス
 
 #エッジ描画
         painter.setPen(QColor.fromHsvF(210 / 360, 1, 1))
@@ -103,13 +104,25 @@ class Node(QGraphicsItem):
             #    painter.setPen(QColor.fromHsvF(210 / 360, 1, 1))
             painter.drawLine(u_pos_x, u_pos_y, v_pos_x, v_pos_y)
 
+#QPainterPathで書いてみる 微妙なきがする
+        sampleEllipsePath = QPainterPath()
+        sampleEllipsePath.moveTo(50.0, 50.0)
+        sampleEllipsePath.arcTo(20.0, 30.0, 60.0, 40.0, 0.0, 360.0);
+        samplePen = QPen(Qt.white, 0.001) #線の太さに0は無効なので、0.001のような十分小さい値にする
+        painter.setPen(samplePen)
+        painter.fillPath(sampleEllipsePath, Qt.red)
+        painter.drawPath(sampleEllipsePath)
+
+        painter.drawPath(sampleEllipsePath)
+        #painter.fillPath(sampleEllipsePath, )
+
     def boundingRect(self):
-        return QRectF(0, 0, 300, 300)
+        return QRectF(0, 0, viewwidth, viewheight)
 
     def hoverEnterEvent(self, event):
         print("Node Hover!!")
 
-    def mousePressEvent(self, event): #一応反応しているみたいだが・・・
+    def mousePressEvent(self, event): #拾えてない!!
         print("Node Clicked!!")
         pos = event.pos()
         self.select(int(pos.x() / 100), int(pos.y() / 100))
@@ -163,7 +176,7 @@ class NodeLinkScene(QGraphicsScene):
         self._pressedButton = None
         self._zoom = 0
 
-        self.setBackgroundBrush(QColor(0, 0, 0, 10)) #背景色。4つめは~255のアルファ値
+        #self.setBackgroundBrush(QColor(0, 0, 0, 10)) #背景色。4つめは~255のアルファ値
 
     def setFile(self, filepath):
         # イメージをアイテムとしてシーンに追加するためのメソッド
