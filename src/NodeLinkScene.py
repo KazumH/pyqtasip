@@ -16,7 +16,6 @@ viewwidth = 900
 targetdir = "TTNet/"
 overalledges = []
 
-
 class Node(QGraphicsItem):
     def __init__(self):
         super(Node, self).__init__()
@@ -25,7 +24,7 @@ class Node(QGraphicsItem):
                       QGraphicsItem.ItemIsSelectable)
         self._colorNum = 0
         self._currentTimeWindow = 0
-        self._weightThreshold = 50
+        self._weightThreshold = 0
         # ピクルデータからノードデータを読み込む
 
         f = open("../data/pickles/20041224.0816-20041224.1018.pickle", "rb")
@@ -152,7 +151,7 @@ class Node(QGraphicsItem):
 #スライダで閾値が変わった時
     def thresholdchanged(self, currentValue):
         self._weightThreshold = currentValue
-        print("Slider !!", self._weightThreshold)
+        #print("Slider !!", self._weightThreshold)
         self.update()
 
 # ノードリンク図部分全体

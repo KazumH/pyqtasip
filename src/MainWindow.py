@@ -15,6 +15,16 @@ import ActivityPlot
 import NodeLinkScene
 
 imagepath = "./sample.png"
+#とりあえず
+timeWindows = ["04/12/24 08:16 - 04/12/24 08:32",
+               "04/12/24 08:33 - 04/12/24 08:47",
+               "04/12/24 08:16 - 04/12/24 09:02",
+               "04/12/24 09:03 - 04/12/24 09:17",
+               "04/12/24 09:18 - 04/12/24 09:32",
+               "04/12/24 09:33 - 04/12/24 09:47",
+               "04/12/24 09:48 - 04/12/24 10:02",
+               "04/12/24 10:03 - 04/12/24 10:17",
+               "04/12/24 10:18 - 04/12/24 10:32"]
 
 #可視化システム全体のビュー
 class MainWindow(QWidget):
@@ -44,49 +54,60 @@ class MainWindow(QWidget):
 
 # ノードリンクビューの脇につけるボタンやスライダー
         #ボタン
-        self.nextButton = QPushButton("Next >")
-        self.nextButton.clicked.connect(self.nextButtonClicked)
-        self.previousButton = QPushButton("< Previous")
-        self.previousButton.clicked.connect(self.previousButtonClicked)
+        nbtn = self.nextButton = QPushButton("Next >")
+        nbtn.clicked.connect(self.nextButtonClicked)
+        pbtn = self.previousButton = QPushButton("< Previous")
+        pbtn.clicked.connect(self.previousButtonClicked)
         #スライダー周り
-        self.weightfilterSlider = QSlider(Qt.Horizontal)
-        self.weightfilterSlider.setMinimum(0)
-        self.weightfilterSlider.setMaximum(10000)
-        self.weightfilterSlider.setValue(50)
-        self.weightfilterSlider.setTickInterval(5)
-        self.weightfilterSlider.valueChanged.connect(self.valuechanged)
-        self.th = QLabel("Weight Th")
-        self.thTextBox = QLineEdit()
-        self.thTextBox.setFixedWidth(40)
+        wsldr= self.weightfilterSlider = QSlider(Qt.Horizontal)
+        wsldr.setMinimum(0)
+        wsldr.setMaximum(10000)
+        wsldr.setValue(0)
+        wsldr.setTickInterval(5)
+        wsldr.valueChanged.connect(self.valuechanged)
+        thlbl = self.th = QLabel("Weight Th")
+        thtxtbx = self.thTextBox = QLineEdit()
+        thtxtbx.setFixedWidth(40)
+        thtxtbx.setText(str(self.node._weightThreshold))
+        #時間窓
+        tmlbl = self.timeWindowLabel = QLabel("TimeWindow")
+        tmtxtbx = self.timeWindow = QLineEdit()
+        tmtxtbx.setText(timeWindows[self.node._currentTimeWindow])
         #チェックボックス
-        self.update = QCheckBox("Updates")
-        self.update.setChecked(True)
-        self.withdrawal = QCheckBox("Withdrawals")
+        uchckbx = self.update = QCheckBox("Updates")
+        uchckbx.setChecked(True)
+        wchckbx = self.withdrawal = QCheckBox("Withdrawals")
 
 #プロットず
-        self.activityplot = ActivityPlot.ActivityPlot(self)
+        actplt = self.activityplot = ActivityPlot.ActivityPlot(self)
 
 #ボタンレイアウト
         buttonLayout = QHBoxLayout()
-        buttonLayout.addWidget(self.previousButton)
-        buttonLayout.addWidget(self.nextButton)
+        buttonLayout.addWidget(pbtn)
+        buttonLayout.addWidget(nbtn)
 
 #チェックボックスレイアウト
         checkboxLayout = QHBoxLayout()
-        checkboxLayout.addWidget(self.update)
-        checkboxLayout.addWidget(self.withdrawal)
+        checkboxLayout.addWidget(uchckbx)
+        checkboxLayout.addWidget(wchckbx)
 
 #スライダー周りのレイアウト
         sliderLayout = QHBoxLayout()
-        sliderLayout.addWidget(self.th)
-        sliderLayout.addWidget(self.weightfilterSlider)
-        sliderLayout.addWidget(self.thTextBox)
+        sliderLayout.addWidget(thlbl)
+        sliderLayout.addWidget(wsldr)
+        sliderLayout.addWidget(thtxtbx)
+
+#時間窓周りのレイアウト
+        timeWindowLayout = QHBoxLayout()
+        timeWindowLayout.addWidget(tmlbl)
+        timeWindowLayout.addWidget(tmtxtbx)
 
 #左側のレイアウト用の箱に追加(上から順に上に)
         widgetLayout = QVBoxLayout()
         widgetLayout.addLayout(checkboxLayout)
-        widgetLayout.addWidget(self.activityplot)
+        widgetLayout.addWidget(actplt)
         widgetLayout.addLayout(sliderLayout)
+        widgetLayout.addLayout(timeWindowLayout)
         widgetLayout.addLayout(buttonLayout)
 
 
@@ -101,13 +122,16 @@ class MainWindow(QWidget):
 # ボタンクリック
     def nextButtonClicked(self):
         self.node.do_next()
+        self.timeWindow.setText(timeWindows[self.node._currentTimeWindow])
 
     def previousButtonClicked(self):
         self.node.do_back()
+        self.timeWindow.setText(timeWindows[self.node._currentTimeWindow])
 
-# スライダ移動
+    # スライダ移動
     def valuechanged(self):
         currentvalue = self.weightfilterSlider.value()
+        self.thTextBox.setText(str(currentvalue))
         self.node.thresholdchanged(currentvalue)
 
 def run():
