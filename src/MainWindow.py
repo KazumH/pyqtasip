@@ -6,7 +6,7 @@ import pickle
 import sys
 
 from PyQt5.QtCore import (QLineF, QPointF, QRectF, Qt, QTimer)
-from PyQt5.QtGui import (QBrush, QColor, QPainter, QIntValidator, QPixmap, QTransform, QCursor)
+from PyQt5.QtGui import (QBrush, QColor, QPen, QIntValidator, QPixmap, QTransform, QCursor)
 from PyQt5.QtWidgets import (QApplication, QWidget, QMainWindow, QGraphicsView, QGraphicsScene, QGraphicsItem, QGraphicsEllipseItem,
                              QGridLayout, QVBoxLayout, QHBoxLayout, QGraphicsPixmapItem, qApp,
                              QLabel, QLineEdit, QPushButton, QSlider, QCheckBox,QSizePolicy)
@@ -30,6 +30,7 @@ timeWindows = ["04/12/24 08:16 - 04/12/24 08:32",
 class MainWindow(QWidget):
     def __init__(self, parent=None): #親がいないウィジェットはウィンドウになる
         super(MainWindow, self).__init__(parent)
+        self._pos = 0
 
 # 全体ウインドウ
         self.setWindowTitle("AS-IP")
@@ -44,13 +45,15 @@ class MainWindow(QWidget):
         self.node = NodeLinkScene.Node()
         nodelinkscene.addItem(self.node)
 
-        # 直接アイテムを追加するとき
-        """
-        self.testnode =  QGraphicsEllipseItem(100, 100, 200, 100)
+
+        # 直接アイテムを追加するとき(ここでノードを追加するとクリックで拾える)
+        testPen = QPen(Qt.black, 0.0)
+        self.testnode =  QGraphicsEllipseItem(100 + self._pos, 100 + self._pos, 200+ self._pos, 200 + self._pos)
+        self.testnode.setPen(testPen)
         self.testnode.setBrush(QBrush(QColor.fromHsvF(0/360, 0.5, 1)))
         self.testnode.setFlags(QGraphicsItem.ItemIsMovable | QGraphicsItem.ItemIsSelectable)
         nodelinkscene.addItem(self.testnode)
-        """
+
 
 # ノードリンクビューの脇につけるボタンやスライダー
         #ボタン
@@ -91,7 +94,7 @@ class MainWindow(QWidget):
         checkboxLayout.addWidget(uchckbx)
         checkboxLayout.addWidget(wchckbx)
 
-#スライダー周りのレイアウト
+#エッジフィルタスライダー周りのレイアウト
         sliderLayout = QHBoxLayout()
         sliderLayout.addWidget(thlbl)
         sliderLayout.addWidget(wsldr)
@@ -121,6 +124,7 @@ class MainWindow(QWidget):
 
 # ボタンクリック
     def nextButtonClicked(self):
+        self.pos =  self._pos + 1
         self.node.do_next()
         self.timeWindow.setText(timeWindows[self.node._currentTimeWindow])
 

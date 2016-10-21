@@ -46,7 +46,6 @@ class Prefix:
         self.
 """
 
-
 """
 class link:
     def __init__(self, t, from_AS, to_AS, hop):
@@ -55,7 +54,6 @@ class link:
         self.toasn = to_AS
         self.hops = hop
 """
-
 
 #アプデデータ読み込み
 def readupdatedata(targetdir, filelist):
@@ -98,12 +96,9 @@ def readupdatedata(targetdir, filelist):
                 second = word[1].split(" ")[1].split(":")[2]
                 # タイムスタンプ型
                 #timestamp = int(time.mktime( datetime.strptime(dtime,"%Y-%m-%d %H:%M:%S").timetuple()))
-
-
                 #分が新しく切り替わったら
                 if current_minute != minute:
                     current_minute = minute
-
                 router = word[3]
                 receive_AS = word[4]
                 ASpath = word[6] # [13 11 290]
@@ -222,13 +217,11 @@ def count(input, pointer, output):
                 break
             else:
                 exit(1)
-
         elif input[j] == input[(j + 1)]:
             #print(input[j], input[(j + 1)])
             #print("Same")
             weight += 1
             #print(weight)
-
         elif input[j] != input[(j + 1)]:
             #print(input[j], input[j + 1])
             #print("Wrong")
@@ -238,13 +231,8 @@ def count(input, pointer, output):
             #print("Newdata:", newdata)
             output.append(newdata)
             break
-
         else:
             exit(1)
 
     nextpointer = pointer + weight
-    #print(nextpointer)
-    #print(output)
-    #再起は1000回まで。
-    #count(input, nextpointer, output)  <- NG
     return nextpointer, output

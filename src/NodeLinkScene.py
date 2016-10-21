@@ -25,12 +25,11 @@ class Node(QGraphicsItem):
         self._colorNum = 0
         self._currentTimeWindow = 0
         self._weightThreshold = 0
+        self._firstDraw = True
         # ピクルデータからノードデータを読み込む
-
         f = open("../data/pickles/20041224.0816-20041224.1018.pickle", "rb")
         global pos
         pos = pickle.load(f)  # '29003': array([ 0.22507305,  0.59479266], dtype=float32)
-
         # ピクルデータからエッジデータを読む
         # [('33405', '22026', {'weight': 2}), ('22143', '7795', {'weight': 8})]
         """
@@ -39,7 +38,6 @@ class Node(QGraphicsItem):
         overalledges = pickle.load(f)
         """
         # CSVから各時間窓のエッジデータを読み込む
-
         for i in range(9):
             targetpath = "../data/csv/" + targetdir + str(i + 1) + "/edges.csv"
             edgefile = open("%s" % targetpath, "r")
@@ -63,25 +61,34 @@ class Node(QGraphicsItem):
             self.board[y][x] = self.turn
             self.turn = 1 - self.turn
 
-#描画部分
+#描画部分 ノード、エッジはItemとして追加されていってるのではないため、クリックなどで拾えない可能性が高い?
     def paint(self, painter, option, widget):
 
-#ノード描画
-        painter.setPen(QColor.fromHsvF(330 / 360, 0.5, 1))
-        painter.setBrush(QColor.fromHsvF(330 / 360, 0.5, 1))
+#ノード描画(起動後一回だけ行うようにしてはダメ。表示されない)
+        testColor = QColor.fromHsvF(330 / 360, 0.4, 1)
+        testColor.setAlpha(127)
+        transparent = QColor.fromHsvF(0, 0, 0)
+        transparent.setAlpha(0)
+        #nodeGridPen = QPen(transparent) # HSVにあるふぁ値はサポートされてない。RGBならおk
+        nodeGridPen = QPen()
+        nodeGridPen.setWidthF(0.01)
+        nodeBrush = QBrush(testColor)
+        painter.setPen(nodeGridPen)
+        painter.setBrush(nodeBrush)
         painter.setRenderHint(QPainter.Antialiasing)
-
         for node in pos.values():
             #node = pos["701"]
             x = node[0]
             y = node[1]
-            #x、yは 0 〜 1を取る400 * 600のビュー内に出すには 600 * x、400 * y、をしてやればpyplotと同じ座標になるはず
+            #x、yは 0 〜 1を取る400 * 600のビュー内に出すには 600 * x、400 * y、をしてやればpyplotと同じ座標になる
             x *= viewwidth
             y *= viewheight
-            painter.drawEllipse(QPointF(x, y), 2.5, 2.5) #QPointFは浮動小数点制度の平面上の店を定義するクラス
+            painter.drawEllipse(QPointF(x, y), 2.0, 2.0) #QPointFは浮動小数点制度の平面上の店を定義するクラス
 
-#エッジ描画
-        painter.setPen(QColor.fromHsvF(210 / 360, 1, 1))
+#エッジ描画()
+        #edgePen = QPen(QColor.fromHsvF(210 / 360, 1, 1))
+        edgePen = QPen(QColor(0, 0, 255, 127))
+        painter.setPen(edgePen)
         #for i in range(9):
         for edge in overalledges[self._currentTimeWindow]:
             u = edge[0]
@@ -104,7 +111,7 @@ class Node(QGraphicsItem):
             #    painter.setPen(QColor.fromHsvF(210 / 360, 1, 1))
             painter.drawLine(u_pos_x, u_pos_y, v_pos_x, v_pos_y)
 
-#QPainterPathで書いてみる 微妙なきがする
+        #QPainterPathで書いてみる 微妙なきがする
         sampleEllipsePath = QPainterPath()
         sampleEllipsePath.moveTo(50.0, 50.0)
         sampleEllipsePath.arcTo(20.0, 30.0, 60.0, 40.0, 0.0, 360.0);
@@ -112,9 +119,11 @@ class Node(QGraphicsItem):
         painter.setPen(samplePen)
         painter.fillPath(sampleEllipsePath, Qt.red)
         painter.drawPath(sampleEllipsePath)
-
         painter.drawPath(sampleEllipsePath)
         #painter.fillPath(sampleEllipsePath, )
+
+
+
 
     def boundingRect(self):
         return QRectF(0, 0, viewwidth, viewheight)
@@ -129,14 +138,10 @@ class Node(QGraphicsItem):
         self.update()
         super(Node, self).mousePressEvent(event)
 
-# Nextボタンを押すと次のステップを実行
+#外部ウィジェットからの描画更新
+    # Nextボタンを押すと次のステップを実行
     def do_next(self):
         print("Next Button Clicked!!")
-        #色変え
-        if self._colorNum >= 360:
-            self._colorNum = 0
-        else:
-            self._colorNum += 30
         #時間窓変更
         if self._currentTimeWindow >= 8:
             self._currentTimeWindow = 0
@@ -145,14 +150,9 @@ class Node(QGraphicsItem):
         print(self._currentTimeWindow)
         self.update()
 
-# Previousボタンを押すと次のステップを実行
+    # Previousボタンを押すと次のステップを実行
     def do_back(self):
         print("Previous Button Clicked!!")
-        # 色変え
-        if self._colorNum >= 360:
-            self._colorNum = 0
-        else:
-            self._colorNum += 30
         # 時間窓変更
         if self._currentTimeWindow <= 0:
             self._currentTimeWindow = 8
@@ -161,7 +161,7 @@ class Node(QGraphicsItem):
         print(self._currentTimeWindow)
         self.update()
 
-#スライダで閾値が変わった時
+    #スライダで閾値が変わった時
     def thresholdchanged(self, currentValue):
         self._weightThreshold = currentValue
         #print("Slider !!", self._weightThreshold)
@@ -175,6 +175,7 @@ class NodeLinkScene(QGraphicsScene):
         self._currentpos = None
         self._pressedButton = None
         self._zoom = 0
+
 
         #self.setBackgroundBrush(QColor(0, 0, 0, 10)) #背景色。4つめは~255のアルファ値
 
@@ -226,14 +227,17 @@ class NodeLinkScene(QGraphicsScene):
     def mousePressEvent(self, event):
         self._currentPos = event.scenePos()
         self._pressedButton = event.button()
-
         #右クリック
         if self._pressedButton == Qt.RightButton:
             print("Right Button Clicked!!")
             cursorShape = Qt.SizeAllCursor
+        #左クリック
         else:
             print("Left Button Clicked!!")
             cursorShape = Qt.ClosedHandCursor
+            #クリックされたノードを拾う(重なってる時は、一番表に出ているノード)
+            clickedItem = self.itemAt(event.scenePos(), QTransform())
+            print(clickedItem)
         #qAppはQtWidgetの中
         qApp.setOverrideCursor(QCursor(cursorShape))
 
@@ -263,7 +267,6 @@ class NodeLinkScene(QGraphicsScene):
         else:
             factor = 0.8
             self._zoom -= 1
-
         if self._zoom > 0:
             self.scale(factor, factor)
         elif self._zoom == 0:

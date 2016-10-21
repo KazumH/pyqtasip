@@ -9,8 +9,6 @@ import MainWindow
 youtubepakistan = "YoutubePakistan/" #ファイル数: 4
 ttnet = "TTNet/" #ファイル数: 9
 
-
-#ノードリンク図部分(matplotlib)
 def run():
 #ターミナルコマンド
     cmd = "ls"
@@ -19,14 +17,10 @@ def run():
 #ターゲットファイルリストの取得
     rawdatafiles = ReadData.rawfilelisting(ttnet)
 
-#データ読み込みと集計、結果をCSVで出力
+#生データ読み込みと集計、結果をCSVで出力
     #ReadData.readupdatedata(ttnet, rawdatafiles) # 第一引数は事件名
 
-#データチェック
-#    ReadData.checklink()
-#    ReadData.checkupdate()
-
-# CSVからPyPlotグラフへ
+# CSVからピクル化し、PyPlotグラフで描画
     timerange = 60
     number_of_files = 9 #int(timerange / 15)
     #DrawGraph.draw(ttnet, number_of_files) #15分間分のファイル 4つ分読み込んでグラフへ
