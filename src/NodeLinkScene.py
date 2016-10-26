@@ -13,8 +13,22 @@ import csv
 #ビューのサイズ
 viewheight = 600
 viewwidth = 900
-targetdir = "TTNet/"
+
 overalledges = []
+nodeColor = QColor.fromHsvF(330 / 360, 0.4, 1)
+nodeColor.setAlpha(127)
+nodeBrush = QBrush(nodeColor)
+gridWidth = 0.01
+nodeGridPen = QPen(nodeColor)
+nodeGridPen.setWidthF(gridWidth)
+edgePen = QPen(QColor(0, 0, 255, 127))
+
+#時間窓数 * 15分(9: TTNet, 4:youtube)
+timeWindowNumber = 4
+#timeWindowNumber = 9
+
+targetdir = "YoutubePakistan/"
+#targetdir = "TTNet/"
 
 class Node(QGraphicsItem):
     def __init__(self):
@@ -26,8 +40,14 @@ class Node(QGraphicsItem):
         self._currentTimeWindow = 0
         self._weightThreshold = 0
         self._firstDraw = True
+        #ノードペン
+
+
         # ピクルデータからノードデータを読み込む
-        f = open("../data/pickles/20041224.0816-20041224.1018.pickle", "rb")
+        #Youtubepakistan
+        f = open("../data/pickles/n.20080224.1824-20080224.1923.pickle", "rb")
+        #TTNet
+        #f = open("../data/pickles/20041224.0816-20041224.1018.pickle", "rb")
         global pos
         pos = pickle.load(f)  # '29003': array([ 0.22507305,  0.59479266], dtype=float32)
         # ピクルデータからエッジデータを読む
@@ -38,7 +58,7 @@ class Node(QGraphicsItem):
         overalledges = pickle.load(f)
         """
         # CSVから各時間窓のエッジデータを読み込む
-        for i in range(9):
+        for i in range(timeWindowNumber):
             targetpath = "../data/csv/" + targetdir + str(i + 1) + "/edges.csv"
             edgefile = open("%s" % targetpath, "r")
             reader = csv.reader(edgefile)
@@ -63,16 +83,10 @@ class Node(QGraphicsItem):
 
 #描画部分 ノード、エッジはItemとして追加されていってるのではないため、クリックなどで拾えない可能性が高い?
     def paint(self, painter, option, widget):
-
 #ノード描画(起動後一回だけ行うようにしてはダメ。表示されない)
-        testColor = QColor.fromHsvF(330 / 360, 0.4, 1)
-        testColor.setAlpha(127)
-        transparent = QColor.fromHsvF(0, 0, 0)
-        transparent.setAlpha(0)
+        #transparent = QColor.fromHsvF(0, 0, 0)
+        #transparent.setAlpha(0)
         #nodeGridPen = QPen(transparent) # HSVにあるふぁ値はサポートされてない。RGBならおk
-        nodeGridPen = QPen()
-        nodeGridPen.setWidthF(0.01)
-        nodeBrush = QBrush(testColor)
         painter.setPen(nodeGridPen)
         painter.setBrush(nodeBrush)
         painter.setRenderHint(QPainter.Antialiasing)
@@ -86,8 +100,6 @@ class Node(QGraphicsItem):
             painter.drawEllipse(QPointF(x, y), 2.0, 2.0) #QPointFは浮動小数点制度の平面上の店を定義するクラス
 
 #エッジ描画()
-        #edgePen = QPen(QColor.fromHsvF(210 / 360, 1, 1))
-        edgePen = QPen(QColor(0, 0, 255, 127))
         painter.setPen(edgePen)
         #for i in range(9):
         for edge in overalledges[self._currentTimeWindow]:
@@ -112,6 +124,7 @@ class Node(QGraphicsItem):
             painter.drawLine(u_pos_x, u_pos_y, v_pos_x, v_pos_y)
 
         #QPainterPathで書いてみる 微妙なきがする
+        """
         sampleEllipsePath = QPainterPath()
         sampleEllipsePath.moveTo(50.0, 50.0)
         sampleEllipsePath.arcTo(20.0, 30.0, 60.0, 40.0, 0.0, 360.0);
@@ -120,11 +133,9 @@ class Node(QGraphicsItem):
         painter.fillPath(sampleEllipsePath, Qt.red)
         painter.drawPath(sampleEllipsePath)
         painter.drawPath(sampleEllipsePath)
-        #painter.fillPath(sampleEllipsePath, )
+        """
 
-
-
-
+    #update()で更新されるビュー範囲
     def boundingRect(self):
         return QRectF(0, 0, viewwidth, viewheight)
 
@@ -143,7 +154,7 @@ class Node(QGraphicsItem):
     def do_next(self):
         print("Next Button Clicked!!")
         #時間窓変更
-        if self._currentTimeWindow >= 8:
+        if self._currentTimeWindow >= timeWindowNumber - 1:
             self._currentTimeWindow = 0
         else:
             self._currentTimeWindow += 1
@@ -155,7 +166,7 @@ class Node(QGraphicsItem):
         print("Previous Button Clicked!!")
         # 時間窓変更
         if self._currentTimeWindow <= 0:
-            self._currentTimeWindow = 8
+            self._currentTimeWindow = timeWindowNumber - 1
         else:
             self._currentTimeWindow -= 1
         print(self._currentTimeWindow)

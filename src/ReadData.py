@@ -1,5 +1,7 @@
 import sys
 import os
+import time as tm
+from datetime import datetime, date, time
 import numpy as np
 import CSVGenerater
 
@@ -15,11 +17,16 @@ monitor_as = []
 ASes = np.empty((0, 1), int)
 # 複数ファイルの全集計先
 overalllinks = [[]]
+overallWithdrawlinks = [[]]
 overallASes = []
 
 firstfile = 200802241824
 lastfile = 200802241909
 filenum = 4
+
+# 現在生きている(有効になっている)IPプリフィックスとそのパスの辞書データ
+# {"1.1.1.1": {"prefixValue": 16, "originAS": 10, "pathes": [[2, 10], [1, 2, 10]]}}
+validPrefixesDict = {}
 #dir = "../data/updates/YoutubePakistan/"
 
 #15分刻みのファイルのみに対応、bgpdumpの*.bz2ファイルの読み込みに多分使う
@@ -58,54 +65,52 @@ class link:
 #アプデデータ読み込み
 def readupdatedata(targetdir, filelist):
     #bgpdumpの-Mオプションで復元した場合
-
     num_of_files = len(filelist)
+
+    #ファイル1つ分
     for fileindex in range(num_of_files):
         alllinks = [[]]  # []にするとnumpy.sortがうまく働かなくなる。data[0] = []となる。ここで初期化しないと各ファイルそれぞれのデータが分けられなくなる
+        global allWithdrawlinks
+        allWithdrawlinks = [[]]
         allASes = [] #1ファイル分の集計先
         target = "../data/updates/" + targetdir + filelist[fileindex]
-        current_file = filelist[fileindex]
-        current_minute = current_file[-2:len(current_file)] # ファイル名のしも二桁を開始分とする
+        currentFile = filelist[fileindex]
+        currentMinute = int(currentFile[-2:len(currentFile)]) # ファイル名のしも二桁を開始分とする
         print("Reading ", target)
         for line in open("%s" % target, "r"):
             word = line.split("|")
             #word[0]="BGP4MP" word[1]= 02/24/08 word[2]= "A" or "W", word[3]= ルータのIPアドレス word[4]=アナウンスしたAS word[5]= IPプリフィックス word[6]= ASパス(最右がオリジン)
-            """
-            Pythonでは、switch文が使えない
-            if, elifを使うが、条件に
-            if str in {"a", "b"}:
-                文...
-            elif str in {"c", "d", "e"}:
-                文...
-            とやると、可読性上がる
-            """
 #アナウンス
             if word[2] == "A":
-                ip = word[5].split("/")
-                prefixes.append(word[5]) # 131.112.0.0/16
-                prefix_value = ip[1] # 16
+                prefix = word[5].split("/") #["131.112.0.0", "16"]
+                addressPrefix = prefix[0] #"131.112.0.0"
+                prefixLength = int(prefix[1]) # 16
 
                 #時間(str型)
                 #月/日/年
-                year = word[1].split(" ")[0].split("/")[2]
-                month = word[1].split(" ")[0].split("/")[0]
-                day = word[1].split(" ")[0].split("/")[1]
+                announceYear = word[1].split(" ")[0].split("/")[2]
+                announceMonth = word[1].split(" ")[0].split("/")[0]
+                announceDay = word[1].split(" ")[0].split("/")[1]
                 #時:分:秒
-                time = word[1].split(" ")[1].split(":")[0]
-                minute = word[1].split(" ")[1].split(":")[1]
-                second = word[1].split(" ")[1].split(":")[2]
-                # タイムスタンプ型
-                #timestamp = int(time.mktime( datetime.strptime(dtime,"%Y-%m-%d %H:%M:%S").timetuple()))
+                announceHour = word[1].split(" ")[1].split(":")[0]
+                announceMinute = word[1].split(" ")[1].split(":")[1]
+                announceSecond = word[1].split(" ")[1].split(":")[2]
+                announceTime = announceYear + announceMonth + announceDay + announceHour + announceMinute
+                """
+                d = date(announceYear, announceMonth, announceDay)
+                t = time(announceHour, announceMinute)
+                dt = datetime.combine(d, t)
+                #announceTimestamp = tm.mktime(dt.timetuple()) #11245553
+                """
                 #分が新しく切り替わったら
-                if current_minute != minute:
-                    current_minute = minute
+                if currentMinute != announceMinute:
+                    currentMinute = announceMinute
                 router = word[3]
-                receive_AS = word[4]
-                ASpath = word[6] # [13 11 290]
-                origin = ASpath[-1] # 290
-
+                receiveAS = word[4]
+                ASpath = word[6] # "13 11 290"
                 # パス内のASすべて抽出し、全ASリストへ集計
-                ASlist = ASpath.split(" ")
+                ASlist = ASpath.split(" ") #[13, 11, 290]
+                originAS = ASlist[-1] # "290"
                 for AS in ASlist:
                     if AS[0] == "{": #6762 701 7381 {14033,14455}の"{14033,14455}"部分
                         #ASset = AS
@@ -118,6 +123,23 @@ def readupdatedata(targetdir, filelist):
                         #全ファイル集計分
                         #overallASes.append(int(AS))
 
+                # 辞書に追加
+                # {"1.1.1.1": {"prefixLength": 16, "originAS": 10, "pathes": {"12:00": [2, 10], "12:03":[1, 2, 10]} }}
+                if addressPrefix in validPrefixesDict: #二回め以降のアナウンスはアナウンス時間とパスを追加
+                    if announceTime in validPrefixesDict[addressPrefix]["pathes"]: #同じ時間に複数のアナウンスがある場合、パスを追加
+                        #print("current:",validPrefixesDict[addressPrefix]["pathes"])
+                        temp = validPrefixesDict[addressPrefix]["pathes"][announceTime] #[[1, 2], [3, 4]]
+                        temp.append(ASlist) #[[1, 2], [3, 4], [13, 11, 290]]
+                        #print("temp:", temp)
+                        validPrefixesDict[addressPrefix]["pathes"][announceTime] = temp
+                    else: #違う時間にアナウンスされている時
+                        validPrefixesDict[addressPrefix]["pathes"][announceTime] = [ASlist]
+                        #print("!! Multiple Announce !!")
+                else: #初めてのアナウンス
+                    announcedPath = [ASlist] # []
+                    validPrefixesDict[addressPrefix] = {"prefixLength": prefixLength, "originAS": originAS, "pathes": {announceTime: announcedPath} }
+                    print("!! First Announce !!", validPrefixesDict[addressPrefix]["pathes"][announceTime])
+
                 #リンクデータの収集
                 for i in range(len(ASlist) - 1):
                     if ASlist[i+1][0] == "{" : #6762 701 7381 {14033,14455}の"{14033,14455}"部分
@@ -127,22 +149,41 @@ def readupdatedata(targetdir, filelist):
                         overalllinks.append([ASlist[i], ASlist[i+1]]) #全ファイル分集計するためのリンク
                     else:
                         continue
-#取り消し
+#取り消し 前回取り消しされてからこの取り消しまでの間で行われたプリフィックスアナウンス情報をファイルをまたがって引っ張ってくる必要がある
             elif word[2] == "W":
-                ip = word[5].split("/")
-                prefixes.append(word[5].rstrip("\n")) # 131.112.0.0/16
-                prefix_value = ip[1] # 16
-                time = word[1] #月/日/年
-                #timestamp = int(time.mktime( datetime.strptime(dtime,"%Y-%m-%d %H:%M:%S").timetuple()))
+                withdrawPrefix = word[5].rstrip("\n").split("/") # 131.112.0.0/16
+                withdrawAddressPrefix = withdrawPrefix[0] #"131.112.0.0"
+                prefixLength = int(withdrawPrefix[1]) # 16
+                #月/日/年
+                withdrawYear = word[1].split(" ")[0].split("/")[2]
+                withdrawMonth = word[1].split(" ")[0].split("/")[0]
+                withdrawDay = word[1].split(" ")[0].split("/")[1]
+                #時:分:秒
+                withdrawHour = word[1].split(" ")[1].split(":")[0]
+                withdrawMinute = word[1].split(" ")[1].split(":")[1]
+                withdrawSecond = word[1].split(" ")[1].split(":")[2]
+                withdrawTime = withdrawYear + withdrawMonth + withdrawDay + withdrawHour + withdrawMinute
+                if withdrawAddressPrefix in validPrefixesDict: #過去にアナウンスされていたプリフィックスなら
+                    print(validPrefixesDict[withdrawAddressPrefix])
+                    withdrawPathes = validPrefixesDict[withdrawAddressPrefix]["pathes"].values() #[[1, 1], [[1, 2], [1, 2, 3]]]
+                    #取り消しリンクデータの収集
+                    for pathes in withdrawPathes:
+                        for path in pathes:
+                            pathSeparater(path)
+
+
+                    #辞書からそのプリフィックスを削除する
+                    del validPrefixesDict[withdrawAddressPrefix]
                 router = word[3]
-                receive_AS = word[4]
+                receiveAS = word[4]
             else:
                 print("----------------------Data Load Error----------------------")
                 exit(1)
 
         print("----------------------Dataset Load Success!----------------------")
+
 #プリフィックス
-        #print(prefixes)
+        #print(validPrefixesDict)
         alluniqueprefixes = np.unique(prefixes)
         #print(alluniqueprefixes)
         #print("The number of announced IP Prefixes:", len(prefixes))
@@ -152,7 +193,8 @@ def readupdatedata(targetdir, filelist):
         #print("The number of appeared ASes:", len(allASes))
         #print("All unique ASes: ", alluniqueASes)
         #print("The number of unique ASes:", len(alluniqueASes))
-#リンク(エッジ)
+
+#アナウンスリンク(エッジ)
         #print("All links: ", alllinks)
         #print("The number of appeared links:", len(alllinks))
         alluniquelinks = np.unique(alllinks)
@@ -163,14 +205,21 @@ def readupdatedata(targetdir, filelist):
         # エッジの重み集計
         weightedlinkdata = weightcounter(linkdata)
 
+#取り消しリンク
+        withdrawlinkdata = np.sort(allWithdrawlinks)
+    # エッジの重み集計
+        weightedWithdrawlinkdata = weightcounter(withdrawlinkdata)
+
     #CSVに書き込む
         dirnum = fileindex + 1
         #重みなし(集計前)の全エッジ
         #CSVGenerater.Edgedatagenerate(dirnum, linkdata)
         #ノード(AS)
         CSVGenerater.Nodedatagenerate(targetdir, dirnum, alluniqueASes)
-        #リンク(重みつき)
+        #1ファイル分のリンク(重みつき)
         CSVGenerater.WeightedEdgedatagenerate(targetdir, dirnum, weightedlinkdata)
+        #1ファイル分の取り消しリンク(重みあり)
+        CSVGenerater.WeightedWithdrawEdgedatagenerate(targetdir, dirnum, weightedWithdrawlinkdata)
     #全体ASデータを一旦一意にする(多くなりすぎる)
         #overallASes = np.unique(overallASes)
 
@@ -236,3 +285,15 @@ def count(input, pointer, output):
 
     nextpointer = pointer + weight
     return nextpointer, output
+
+#取り消しリンク用。ASのリストが引数
+def pathSeparater(path):
+    for i in range(len(path) - 1):
+        if path[i + 1][0] == "{":  # 6762 701 7381 {14033,14455}の"{14033,14455}"部分
+            break  # 出現頻度は低いので現段階ではとりあえず
+        elif path[i] != path[i + 1]:
+            print(path[i], path[i + 1])
+            allWithdrawlinks.append([path[i], path[i + 1]])  # 1ファイル分のみの取り消しリンク
+            overallWithdrawlinks.append([path[i], path[i + 1]])  # 全ファイル分集計するための取り消しリンク
+        else:
+            continue

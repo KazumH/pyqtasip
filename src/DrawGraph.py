@@ -79,31 +79,31 @@ def draw(targetdir, num_of_files):
             nodelist.append(row[0])
         list_of_nodelist.append(nodelist)
 #エッジ
-    # 1ファイルずつエッジデータを読む。
-    dirnum = 5
-    targetpath = "../data/csv/" + targetdir + str(dirnum) + "/edges.csv"
-    print("Loading %s Edge data..." % targetpath)
-    edgefile = open("%s" % targetpath, "r")
-    reader = csv.reader(edgefile)
-    for row in reader:
-        G.add_edge(row[0], row[1], weight=int(row[2]))  # iごとに色が変わるようにする
-
-    #時間窓全体分を集計したエッジデータ読み込み
-    #targetpath = "../data/csv/" + targetdir + "overall/overalledges.csv"
+# 1ファイルずつエッジデータを読む。
+    #dirnum = 5
+    #targetpath = "../data/csv/" + targetdir + str(dirnum) + "/edges.csv"
     #print("Loading %s Edge data..." % targetpath)
     #edgefile = open("%s" % targetpath, "r")
     #reader = csv.reader(edgefile)
     #for row in reader:
     #    G.add_edge(row[0], row[1], weight=int(row[2]))  # iごとに色が変わるようにする
 
-    #各エッジファイル全て一つずつ読み込む
+#時間窓全体分を集計したエッジデータ読み込み
+    targetpath = "../data/csv/" + targetdir + "overall/overalledges.csv"
+    print("Loading %s Edge data..." % targetpath)
+    edgefile = open("%s" % targetpath, "r")
+    reader = csv.reader(edgefile)
+    for row in reader:
+        G.add_edge(row[0], row[1], weight=int(row[2]))  # iごとに色が変わるようにする
+
+#各エッジファイル全て一つずつ読み込む
     #for i in range(9):
     #    G.add_nodes_from(list_of_nodelist[i])
 
     #
     picklededge = G.edges(data = True)
 #ノーど分別
-    """ Youtubepakistan用
+    #""" Youtubepakistan用
     nodeset1 = set(list_of_nodelist[0]) #{'1', '2', '3'}
     nodeset2 = set(list_of_nodelist[1]) #{'2', '3', '4'}
     nodeset3 = set(list_of_nodelist[2]) #{'3', '4', '5'}
@@ -121,7 +121,7 @@ def draw(targetdir, num_of_files):
     newnodelist2 = list(newnodeset2)
     newnodelist3 = list(newnodeset3)
     newnodelist4 = list(newnodeset4)
-    """
+
 
 # TTNet用
 #フィルタリング
@@ -142,25 +142,26 @@ def draw(targetdir, num_of_files):
 #ばねモデル(Fruchterman-Reingold)で計算したnetworkxの位置情報オブジェクトをファイルへ保存(毎回位置計算は無駄)
 #辞書(ノードキーとポジション)が帰ってくる
 #ノードのピクル
-    #pos = nx.spring_layout(G)
+    pos = nx.spring_layout(G)
+    picklefile = open("../data/pickles/n.20080224.1824-20080224.1923.pickle", mode="wb")
     #picklefile = open("../data/pickles/n.20041224.0816-20041224.1018.pickle", mode="wb")
-    #pickle.dump(pos, picklefile)
+    pickle.dump(pos, picklefile)
 
 #エッジのピクル
-    picklefile = open("../data/pickles/e.20041224.0816-20041224.1018.pickle", mode="wb")
-    pickle.dump(picklededge, picklefile)
+    #picklefile = open("../data/pickles/e.20041224.0816-20041224.1018.pickle", mode="wb")
+    #pickle.dump(picklededge, picklefile)
 
 #エッジのみ
-    picklefile = open("../data/pickles/20041224.0816-20041224.1018.pickle", mode="rb")
-    pos = pickle.load(picklefile)
+    #picklefile = open("../data/pickles/20041224.0816-20041224.1018.pickle", mode="rb")
+    #pos = pickle.load(picklefile)
 
     #ノード(色は色相360度をノード種類数で割った値ずつずらしていく 0, 90, 180, 270といった感じ) hsv(0,100,100), hsv(90,100,100)
-    """Youtube pakistan用
+    #"""Youtube pakistan用
     nx.draw_networkx_nodes(G, pos, nodelist=newnodelist1,node_color="#ff0000", alpha=0.5, linewidths=0) #四角にするにはnode_shape='s'
     nx.draw_networkx_nodes(G, pos, nodelist=newnodelist2,node_color="#7fff00", alpha=0.5, linewidths=0)
     nx.draw_networkx_nodes(G, pos, nodelist=newnodelist3,node_color="#00ffff", alpha=0.5, linewidths=0)
     nx.draw_networkx_nodes(G, pos, nodelist=newnodelist4,node_color="#7f00ff", alpha=0.5, linewidths=0)
-    """
+
     #TTNet用
 
 #エッジ描画
