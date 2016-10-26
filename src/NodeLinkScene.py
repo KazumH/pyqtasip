@@ -15,6 +15,7 @@ viewheight = 600
 viewwidth = 900
 
 overalledges = []
+overallWithdrawedges = []
 nodeColor = QColor.fromHsvF(330 / 360, 0.4, 1)
 nodeColor.setAlpha(127)
 nodeBrush = QBrush(nodeColor)
@@ -22,7 +23,7 @@ gridWidth = 0.01
 nodeGridPen = QPen(nodeColor)
 nodeGridPen.setWidthF(gridWidth)
 edgePen = QPen(QColor(0, 0, 255, 127))
-
+withdrawedgePen = QPen(QColor(255, 0, 0, 127))
 #時間窓数 * 15分(9: TTNet, 4:youtube)
 timeWindowNumber = 4
 #timeWindowNumber = 9
@@ -40,7 +41,8 @@ class Node(QGraphicsItem):
         self._currentTimeWindow = 0
         self._weightThreshold = 0
         self._firstDraw = True
-        #ノードペン
+        self._announceDraw = True
+        self._withdrawDraw = False
 
 
         # ピクルデータからノードデータを読み込む
@@ -50,6 +52,7 @@ class Node(QGraphicsItem):
         #f = open("../data/pickles/20041224.0816-20041224.1018.pickle", "rb")
         global pos
         pos = pickle.load(f)  # '29003': array([ 0.22507305,  0.59479266], dtype=float32)
+
         # ピクルデータからエッジデータを読む
         # [('33405', '22026', {'weight': 2}), ('22143', '7795', {'weight': 8})]
         """
@@ -59,6 +62,7 @@ class Node(QGraphicsItem):
         """
         # CSVから各時間窓のエッジデータを読み込む
         for i in range(timeWindowNumber):
+            #アナウンスエッジ
             targetpath = "../data/csv/" + targetdir + str(i + 1) + "/edges.csv"
             edgefile = open("%s" % targetpath, "r")
             reader = csv.reader(edgefile)
@@ -66,7 +70,14 @@ class Node(QGraphicsItem):
             for row in reader:
                 edges.append([row[0], row[1], int(row[2])])
             overalledges.append(edges)
-
+            #取り消しエッジ
+            targetpath = "../data/csv/" + targetdir + str(i + 1) + "/withdrawedges.csv"
+            edgefile = open("%s" % targetpath, "r")
+            reader = csv.reader(edgefile)
+            edges = []
+            for row in reader:
+                edges.append([row[0], row[1], int(row[2])])
+            overallWithdrawedges.append(edges)
     def reset(self):
         for y in range(3):
             for x in range(3):
@@ -100,29 +111,44 @@ class Node(QGraphicsItem):
             painter.drawEllipse(QPointF(x, y), 2.0, 2.0) #QPointFは浮動小数点制度の平面上の店を定義するクラス
 
 #エッジ描画()
-        painter.setPen(edgePen)
-        #for i in range(9):
-        for edge in overalledges[self._currentTimeWindow]:
-            u = edge[0]
-            v = edge[1]
-            weight = edge[2]
-            if weight <= self._weightThreshold:
-                continue
-            u_pos_x = pos[u][0]
-            u_pos_y = pos[u][1]
-            u_pos_x *= viewwidth
-            u_pos_y *= viewheight
-            v_pos_x = pos[v][0]
-            v_pos_y = pos[v][1]
-            v_pos_x *= viewwidth
-            v_pos_y *= viewheight
-            #print(u_pos_x, u_pos_y, v_pos_x, v_pos_y)
-            #if self._currentTimeWindow == i:
-            #    painter.setPen(QColor.fromHsvF(30 / 360, 1, 1))
-            #    painter.drawLine(u_pos_x, u_pos_y, v_pos_x, v_pos_y)
-            #    painter.setPen(QColor.fromHsvF(210 / 360, 1, 1))
-            painter.drawLine(u_pos_x, u_pos_y, v_pos_x, v_pos_y)
 
+        #for i in range(9):
+#アナウンス分
+        if self._announceDraw:
+            painter.setPen(edgePen)
+            for edge in overalledges[self._currentTimeWindow]:
+                u = edge[0]
+                v = edge[1]
+                weight = edge[2]
+                if weight <= self._weightThreshold:
+                    continue
+                u_pos_x = pos[u][0]
+                u_pos_y = pos[u][1]
+                u_pos_x *= viewwidth
+                u_pos_y *= viewheight
+                v_pos_x = pos[v][0]
+                v_pos_y = pos[v][1]
+                v_pos_x *= viewwidth
+                v_pos_y *= viewheight
+                painter.drawLine(u_pos_x, u_pos_y, v_pos_x, v_pos_y)
+#取り消し分
+        if self._withdrawDraw:
+            painter.setPen(withdrawedgePen)
+            for edge in overallWithdrawedges[self._currentTimeWindow]:
+                u = edge[0]
+                v = edge[1]
+                weight = edge[2]
+                if weight <= self._weightThreshold:
+                    continue
+                u_pos_x = pos[u][0]
+                u_pos_y = pos[u][1]
+                u_pos_x *= viewwidth
+                u_pos_y *= viewheight
+                v_pos_x = pos[v][0]
+                v_pos_y = pos[v][1]
+                v_pos_x *= viewwidth
+                v_pos_y *= viewheight
+                painter.drawLine(u_pos_x, u_pos_y, v_pos_x, v_pos_y)
         #QPainterPathで書いてみる 微妙なきがする
         """
         sampleEllipsePath = QPainterPath()
@@ -177,7 +203,19 @@ class Node(QGraphicsItem):
         self._weightThreshold = currentValue
         #print("Slider !!", self._weightThreshold)
         self.update()
-
+    #チェックボックス
+    def announceCheckBoxClicked(self, announceBool):
+        if announceBool == 2:
+            self._announceDraw = True
+        elif announceBool == 0:
+            self._announceDraw = False
+        self.update()
+    def withdrawCheckBoxClicked(self, withdrawBool):
+        if withdrawBool == 2:
+            self._withdrawDraw = True
+        elif withdrawBool == 0:
+            self._withdrawDraw = False
+        self.update()
 # ノードリンク図部分全体
 class NodeLinkScene(QGraphicsScene):
     def __init__(self, *argv, **keywords):

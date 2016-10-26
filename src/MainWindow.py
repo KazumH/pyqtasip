@@ -82,10 +82,11 @@ class MainWindow(QWidget):
         #tmtxtbx.setText(TTNetTimeWindows[self.node._currentTimeWindow])
         tmtxtbx.setText(YoutubePakistanTimeWindows[self.node._currentTimeWindow])
         #チェックボックス
-        uchckbx = self.update = QCheckBox("Updates")
-        uchckbx.setChecked(True)
-        wchckbx = self.withdrawal = QCheckBox("Withdrawals")
-
+        achckbx = self.announce = QCheckBox("Announces")
+        achckbx.setChecked(True)
+        achckbx.clicked.connect(self.announceCheckBoxClicked)
+        wchckbx = self.withdraw = QCheckBox("Withdrawals")
+        wchckbx.clicked.connect(self.withdrawCheckBoxClicked)
 #プロットず
         actplt = self.activityplot = ActivityPlot.ActivityPlot(self)
 
@@ -96,7 +97,7 @@ class MainWindow(QWidget):
 
 #チェックボックスレイアウト
         checkboxLayout = QHBoxLayout()
-        checkboxLayout.addWidget(uchckbx)
+        checkboxLayout.addWidget(achckbx)
         checkboxLayout.addWidget(wchckbx)
 
 #エッジフィルタスライダー周りのレイアウト
@@ -144,7 +145,16 @@ class MainWindow(QWidget):
         currentvalue = self.weightfilterSlider.value()
         self.thTextBox.setText(str(currentvalue))
         self.node.thresholdchanged(currentvalue)
+    #チェックボックス
+    def announceCheckBoxClicked(self):
+        announceBool = self.announce.checkState() #uncheck:0, partiallychecked:1. checked: 2
+        print(announceBool)
+        self.node.announceCheckBoxClicked(announceBool)
 
+    def withdrawCheckBoxClicked(self):
+        withdrawBool = self.withdraw.checkState()  # uncheck:0, partiallychecked:1. checked: 2
+        print(withdrawBool)
+        self.node.withdrawCheckBoxClicked(withdrawBool)
 def run():
     myapp = QApplication(sys.argv)
     mainWindow = MainWindow()
