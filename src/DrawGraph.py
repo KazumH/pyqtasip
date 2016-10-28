@@ -16,7 +16,7 @@ colors = ["#ff0000", "#ff7f00", "#ffff00", "#7fff00", "#00ff00", "#00ff7f",
           "#00ffff", "#007fff", "#0000ff", "#7f00ff", "#ff00ff", "#ff007f"]
 
 # YoutubePakistan用ASラベル
-YoutubePakistanlabels = [r"17557", r"36561"]
+YoutubePakistanlabels = [r"17557", r"36561", r"3549", r"3491"]
 
 # TTNet用ASラベル
 TTNetspecialnodes = [r"9121", r"6762", r"6939", r"6453", r"701", r"702",
@@ -125,14 +125,14 @@ def draw(targetdir, num_of_files):
 
 # TTNet用
 #フィルタリング
-    elarge = [(u, v) for (u, v, d) in G.edges(data=True) if d['weight'] > 2000]
-    ehuge = [(u, v) for (u, v, d) in G.edges(data=True) if d['weight'] > 20000]
-    eextreme = [(u, v) for (u, v, d) in G.edges(data=True) if d['weight'] > 100000]
-    esmall = [(u, v) for (u, v, d) in G.edges(data=True) if d['weight'] <= 200]
+    elarge = [(u, v) for (u, v, d) in G.edges(data=True) if d['weight'] > 20]
+    ehuge = [(u, v) for (u, v, d) in G.edges(data=True) if d['weight'] > 200]
+    eextreme = [(u, v) for (u, v, d) in G.edges(data=True) if d['weight'] > 1000]
+    esmall = [(u, v) for (u, v, d) in G.edges(data=True) if d['weight'] <= 20]
 
 # 一部ASノードにラベル付け
     speciallabels = {}
-    for node in TTNetspecialnodes:
+    for node in YoutubePakistanlabels:
         speciallabels[node] = node #"r"はraw文字列
 
 #グラフ描画開始
@@ -143,9 +143,9 @@ def draw(targetdir, num_of_files):
 #辞書(ノードキーとポジション)が帰ってくる
 #ノードのピクル
     pos = nx.spring_layout(G)
-    picklefile = open("../data/pickles/n.20080224.1824-20080224.1923.pickle", mode="wb")
+    #picklefile = open("../data/pickles/n.20080224.1824-20080224.1923.pickle", mode="wb")
     #picklefile = open("../data/pickles/n.20041224.0816-20041224.1018.pickle", mode="wb")
-    pickle.dump(pos, picklefile)
+    #pickle.dump(pos, picklefile)
 
 #エッジのピクル
     #picklefile = open("../data/pickles/e.20041224.0816-20041224.1018.pickle", mode="wb")
@@ -157,16 +157,20 @@ def draw(targetdir, num_of_files):
 
     #ノード(色は色相360度をノード種類数で割った値ずつずらしていく 0, 90, 180, 270といった感じ) hsv(0,100,100), hsv(90,100,100)
     #"""Youtube pakistan用
+    """
     nx.draw_networkx_nodes(G, pos, nodelist=newnodelist1,node_color="#ff0000", alpha=0.5, linewidths=0) #四角にするにはnode_shape='s'
     nx.draw_networkx_nodes(G, pos, nodelist=newnodelist2,node_color="#7fff00", alpha=0.5, linewidths=0)
     nx.draw_networkx_nodes(G, pos, nodelist=newnodelist3,node_color="#00ffff", alpha=0.5, linewidths=0)
     nx.draw_networkx_nodes(G, pos, nodelist=newnodelist4,node_color="#7f00ff", alpha=0.5, linewidths=0)
+    """
+    nx.draw_networkx_nodes(G, pos, nodelist=YoutubePakistanlabels,node_color="#ff0000", alpha=0.5, linewidths=0) #四角にするにはnode_shape='s'
+
 
     #TTNet用
 
 #エッジ描画
-    nx.draw_networkx_edges(G, pos, edgelist=eextreme,width=10)
-    nx.draw_networkx_edges(G, pos, edgelist=ehuge,width=3, alpha=0.3)
+    #nx.draw_networkx_edges(G, pos, edgelist=eextreme,width=10, edge_color="g", alpha=0.5)
+    nx.draw_networkx_edges(G, pos, edgelist=ehuge,width=3, alpha=0.1)
     #nx.draw_networkx_edges(G, pos, edgelist=elarge,width=1, alpha=0.2, style='dashed')
 
 #限定表示したい時間枠
@@ -185,8 +189,7 @@ def draw(targetdir, num_of_files):
                                #linewidths=0)
 
 #LinkRankと同じノード
-    nx.draw_networkx_nodes(G, pos, nodelist=TTNetspecialnodes , node_size=250, node_color=colors[0], alpha=1,
-                           linewidths=0)
+    #nx.draw_networkx_nodes(G, pos, nodelist=TTNetspecialnodes , node_size=250, node_color=colors[0], alpha=1, linewidths=0)
     #nx.draw_networkx_nodes(G, pos, nodelist=list_of_nodelist[0],node_size=250 ,node_color=colors[0], alpha=0.5, linewidths=0)
 #ノードすべて
     #nx.draw_networkx_nodes(G, pos, node_size=250 ,node_color="#00ffff", alpha=0.5, linewidths=0)

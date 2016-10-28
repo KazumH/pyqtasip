@@ -4,24 +4,22 @@ import time as tm
 from datetime import datetime, date, time
 import numpy as np
 import CSVGenerater
+import pickle
 
 a = []
 links = []
 prefixes = []
-fromases = []
-toases = []
-earlist_time = 0
-latest_time = 0
 ip = []
-monitor_as = []
+global everyMinutesAnnounce
+everyMinutesAnnounce = {} #1分ずつ全て保存し、ピクル
+global everyMinutesWithdraw
+everyMinutesWithdraw = {} #1分ずつ全て保存し、ピクル
 ASes = np.empty((0, 1), int)
 # 複数ファイルの全集計先
 overalllinks = [[]]
 overallWithdrawlinks = [[]]
 overallASes = []
 
-firstfile = 200802241824
-lastfile = 200802241909
 filenum = 4
 
 # 現在生きている(有効になっている)IPプリフィックスとそのパスの辞書データ
@@ -95,6 +93,7 @@ def readupdatedata(targetdir, filelist):
                 announceHour = word[1].split(" ")[1].split(":")[0]
                 announceMinute = word[1].split(" ")[1].split(":")[1]
                 announceSecond = word[1].split(" ")[1].split(":")[2]
+
                 announceTime = announceYear + announceMonth + announceDay + announceHour + announceMinute
                 """
                 d = date(announceYear, announceMonth, announceDay)
@@ -123,7 +122,7 @@ def readupdatedata(targetdir, filelist):
                         #全ファイル集計分
                         #overallASes.append(int(AS))
 
-                # 辞書に追加
+                # 有効アナウンス辞書に追加
                 # {"1.1.1.1": {"prefixLength": 16, "originAS": 10, "pathes": {"12:00": [2, 10], "12:03":[1, 2, 10]} }}
                 if addressPrefix in validPrefixesDict: #二回め以降のアナウンスはアナウンス時間とパスを追加
                     if announceTime in validPrefixesDict[addressPrefix]["pathes"]: #同じ時間に複数のアナウンスがある場合、パスを追加
@@ -138,15 +137,23 @@ def readupdatedata(targetdir, filelist):
                 else: #初めてのアナウンス
                     announcedPath = [ASlist] # []
                     validPrefixesDict[addressPrefix] = {"prefixLength": prefixLength, "originAS": originAS, "pathes": {announceTime: announcedPath} }
-                    print("!! First Announce !!", validPrefixesDict[addressPrefix]["pathes"][announceTime])
 
-                #リンクデータの収集
+                    #print("!! First Announce !!", validPrefixesDict[addressPrefix]["pathes"][announceTime])
+
+                #ASパス部分からリンクペアデータの収集
                 for i in range(len(ASlist) - 1):
                     if ASlist[i+1][0] == "{" : #6762 701 7381 {14033,14455}の"{14033,14455}"部分
                         break #出現頻度は低いので現段階ではとりあえず
                     elif ASlist[i] != ASlist[i+1]:
                         alllinks.append([ASlist[i], ASlist[i+1]]) #1ファイル分のみのリンク
                         overalllinks.append([ASlist[i], ASlist[i+1]]) #全ファイル分集計するためのリンク
+                        if announceTime in everyMinutesAnnounce: #
+                            temp = everyMinutesAnnounce[announceTime]
+                            temp.append([ASlist[i], ASlist[i+1]])
+                            everyMinutesAnnounce[announceTime] = temp
+                        else: #分が新しくなって1番目にきたアナウンス
+                            everyMinutesAnnounce[announceTime] = [[ASlist[i], ASlist[i+1]]] # [[1, 2]]
+                            print(everyMinutesAnnounce)
                     else:
                         continue
 #取り消し 前回取り消しされてからこの取り消しまでの間で行われたプリフィックスアナウンス情報をファイルをまたがって引っ張ってくる必要がある
@@ -162,15 +169,15 @@ def readupdatedata(targetdir, filelist):
                 withdrawHour = word[1].split(" ")[1].split(":")[0]
                 withdrawMinute = word[1].split(" ")[1].split(":")[1]
                 withdrawSecond = word[1].split(" ")[1].split(":")[2]
+                global withdrawTime
                 withdrawTime = withdrawYear + withdrawMonth + withdrawDay + withdrawHour + withdrawMinute
                 if withdrawAddressPrefix in validPrefixesDict: #過去にアナウンスされていたプリフィックスなら
-                    print(validPrefixesDict[withdrawAddressPrefix])
+                    #print(validPrefixesDict[withdrawAddressPrefix])
                     withdrawPathes = validPrefixesDict[withdrawAddressPrefix]["pathes"].values() #[[1, 1], [[1, 2], [1, 2, 3]]]
                     #取り消しリンクデータの収集
                     for pathes in withdrawPathes:
                         for path in pathes:
-                            pathSeparater(path)
-
+                            withdrawPathSeparater(path)
 
                     #辞書からそのプリフィックスを削除する
                     del validPrefixesDict[withdrawAddressPrefix]
@@ -241,6 +248,10 @@ def readupdatedata(targetdir, filelist):
     #重み集計済みエッジ
     CSVGenerater.OverallEdgedatagenerate(targetdir, weightedoveralllinkdata)
 
+#1分ごとのアナウンス、取り消しデータをピクル化
+    makePickle(everyMinutesAnnounce, "a.20080224.1824-20080224.1923")
+    makePickle(everyMinutesWithdraw, "w.20080224.1824-20080224.1923")
+
 
 #同リンクが複数ある時、その分重みをインクリメントする・・・という集計。あらかじめデータは整理されていることが前提。
 def weightcounter(data):
@@ -287,13 +298,23 @@ def count(input, pointer, output):
     return nextpointer, output
 
 #取り消しリンク用。ASのリストが引数
-def pathSeparater(path):
+def withdrawPathSeparater(path):
     for i in range(len(path) - 1):
         if path[i + 1][0] == "{":  # 6762 701 7381 {14033,14455}の"{14033,14455}"部分
             break  # 出現頻度は低いので現段階ではとりあえず
         elif path[i] != path[i + 1]:
-            print(path[i], path[i + 1])
+            #print(path[i], path[i + 1])
             allWithdrawlinks.append([path[i], path[i + 1]])  # 1ファイル分のみの取り消しリンク
             overallWithdrawlinks.append([path[i], path[i + 1]])  # 全ファイル分集計するための取り消しリンク
+            if withdrawTime in everyMinutesWithdraw:  #分ごと辞書
+                temp = everyMinutesWithdraw[withdrawTime]
+                temp.append([path[i], path[i + 1]])
+                everyMinutesWithdraw[withdrawTime] = temp
+            else:  # 分が新しくなって1番目にきたアナウンス
+                everyMinutesWithdraw[withdrawTime] = [[path[i], path[i + 1]]]  # [[1, 2]]
         else:
             continue
+
+def makePickle(data, picklefilename):
+    picklefile = open("../data/pickles/%s.pickle" % picklefilename, mode="wb")
+    pickle.dump(data, picklefile)

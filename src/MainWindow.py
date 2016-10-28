@@ -11,6 +11,7 @@ from PyQt5.QtWidgets import (QApplication, QWidget, QMainWindow, QGraphicsView, 
                              QGridLayout, QVBoxLayout, QHBoxLayout, QGraphicsPixmapItem, qApp,
                              QLabel, QLineEdit, QPushButton, QSlider, QCheckBox,QSizePolicy)
 
+import ActivityPlotView
 import ActivityPlot
 import NodeLinkScene
 
@@ -43,7 +44,8 @@ class MainWindow(QWidget):
 # ノードリンクビュー部分に当たるQGraphicsSceneの作成、設定
         nodelinkscene = NodeLinkScene.NodeLinkScene()
         nodelinkscene.setSceneRect(QRectF(0, 0, 900, 600))
-        self.graphicsView.setScene(nodelinkscene) #メインウインドウにノードリンクビューを追加
+        # メインウインドウにノードリンクビューを追加
+        self.graphicsView.setScene(nodelinkscene)
 
         # いろんな設定した図形アイテムを追加するとき
         self.node = NodeLinkScene.Node()
@@ -88,8 +90,11 @@ class MainWindow(QWidget):
         wchckbx = self.withdraw = QCheckBox("Withdrawals")
         wchckbx.clicked.connect(self.withdrawCheckBoxClicked)
 #プロットず
-        actplt = self.activityplot = ActivityPlot.ActivityPlot(self)
-
+        # actplt = self.activityPlot = ActivityPlot.ActivityPlot(self)
+        activityPlotView = ActivityPlotView.ActivityPlotView()
+        #activityPlotView.setSceneRect(QRectF(0, 0, 300, 300))
+        # メインウインドウにアクティビティプロットを追加
+        #self.graphicsView.setScene(activityPlotScene)
 #ボタンレイアウト
         buttonLayout = QHBoxLayout()
         buttonLayout.addWidget(pbtn)
@@ -114,7 +119,8 @@ class MainWindow(QWidget):
 #左側のレイアウト用の箱に追加(上から順に上に)
         widgetLayout = QVBoxLayout()
         widgetLayout.addLayout(checkboxLayout)
-        widgetLayout.addWidget(actplt)
+        #widgetLayout.addWidget(actplt)
+        widgetLayout.addWidget(activityPlotView)
         widgetLayout.addLayout(sliderLayout)
         widgetLayout.addLayout(timeWindowLayout)
         widgetLayout.addLayout(buttonLayout)

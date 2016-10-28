@@ -11,9 +11,10 @@ ttnet = "TTNet/" #ファイル数: 9
 
 def run():
 #ターミナルコマンド
+    """
     cmd = "ls"
     subprocess.call(cmd, shell=True)
-
+    """
 #ターゲットファイルリストの取得
     rawdatafiles = ReadData.rawfilelisting(youtubepakistan)
 
