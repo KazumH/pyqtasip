@@ -3,7 +3,7 @@ import os
 import time as tm
 from datetime import datetime, date, time
 import numpy as np
-import CSVGenerater
+import DataFileGenerater
 import pickle
 
 a = []
@@ -14,6 +14,8 @@ global everyMinutesAnnounce
 everyMinutesAnnounce = {} #1分ずつ全て保存し、ピクル
 global everyMinutesWithdraw
 everyMinutesWithdraw = {} #1分ずつ全て保存し、ピクル
+global observerASes
+observerASes = {} #各観測点
 ASes = np.empty((0, 1), int)
 # 複数ファイルの全集計先
 overalllinks = [[]]
@@ -44,22 +46,6 @@ def rawfilelisting(dir):
     print("Loading Target: ", files)
     return files
 
-"""
-class Prefix:
-    def __init__(self, network, value, time. router, origin):
-        self.prefix = network
-        self.
-"""
-
-"""
-class link:
-    def __init__(self, t, from_AS, to_AS, hop):
-        self.t = t
-        self.fromasn = from_AS
-        self.toasn = to_AS
-        self.hops = hop
-"""
-
 #アプデデータ読み込み
 def readupdatedata(targetdir, filelist):
     #bgpdumpの-Mオプションで復元した場合
@@ -83,7 +69,7 @@ def readupdatedata(targetdir, filelist):
                 prefix = word[5].split("/") #["131.112.0.0", "16"]
                 addressPrefix = prefix[0] #"131.112.0.0"
                 prefixLength = int(prefix[1]) # 16
-
+                minIP, maxIP = ipToNum(addressPrefix, prefixLength)
                 #時間(str型)
                 #月/日/年
                 announceYear = word[1].split(" ")[0].split("/")[2]
@@ -93,19 +79,12 @@ def readupdatedata(targetdir, filelist):
                 announceHour = word[1].split(" ")[1].split(":")[0]
                 announceMinute = word[1].split(" ")[1].split(":")[1]
                 announceSecond = word[1].split(" ")[1].split(":")[2]
-
                 announceTime = announceYear + announceMonth + announceDay + announceHour + announceMinute
-                """
-                d = date(announceYear, announceMonth, announceDay)
-                t = time(announceHour, announceMinute)
-                dt = datetime.combine(d, t)
-                #announceTimestamp = tm.mktime(dt.timetuple()) #11245553
-                """
                 #分が新しく切り替わったら
                 if currentMinute != announceMinute:
                     currentMinute = announceMinute
                 router = word[3]
-                receiveAS = word[4]
+                observerAS = word[4]
                 ASpath = word[6] # "13 11 290"
                 # パス内のASすべて抽出し、全ASリストへ集計
                 ASlist = ASpath.split(" ") #[13, 11, 290]
@@ -123,7 +102,7 @@ def readupdatedata(targetdir, filelist):
                         #overallASes.append(int(AS))
 
                 # 有効アナウンス辞書に追加
-                # {"1.1.1.1": {"prefixLength": 16, "originAS": 10, "pathes": {"12:00": [2, 10], "12:03":[1, 2, 10]} }}
+                # {"1.1.0.0": {"min": int型のIPアドレス最小値, "max": int型のIPアドレス最大値, "prefixLength": 16, "originAS": 10, "pathes": {"12:00": [2, 10], "12:03":[1, 2, 10]} }}
                 if addressPrefix in validPrefixesDict: #二回め以降のアナウンスはアナウンス時間とパスを追加
                     if announceTime in validPrefixesDict[addressPrefix]["pathes"]: #同じ時間に複数のアナウンスがある場合、パスを追加
                         #print("current:",validPrefixesDict[addressPrefix]["pathes"])
@@ -136,7 +115,7 @@ def readupdatedata(targetdir, filelist):
                         #print("!! Multiple Announce !!")
                 else: #初めてのアナウンス
                     announcedPath = [ASlist] # []
-                    validPrefixesDict[addressPrefix] = {"prefixLength": prefixLength, "originAS": originAS, "pathes": {announceTime: announcedPath} }
+                    validPrefixesDict[addressPrefix] = {"min": minIP, "max": maxIP, "prefixLength": prefixLength, "originAS": originAS, "pathes": {announceTime: announcedPath} }
 
                     #print("!! First Announce !!", validPrefixesDict[addressPrefix]["pathes"][announceTime])
 
@@ -153,7 +132,7 @@ def readupdatedata(targetdir, filelist):
                             everyMinutesAnnounce[announceTime] = temp
                         else: #分が新しくなって1番目にきたアナウンス
                             everyMinutesAnnounce[announceTime] = [[ASlist[i], ASlist[i+1]]] # [[1, 2]]
-                            print(everyMinutesAnnounce)
+                            #print(everyMinutesAnnounce)
                     else:
                         continue
 #取り消し 前回取り消しされてからこの取り消しまでの間で行われたプリフィックスアナウンス情報をファイルをまたがって引っ張ってくる必要がある
@@ -186,7 +165,6 @@ def readupdatedata(targetdir, filelist):
             else:
                 print("----------------------Data Load Error----------------------")
                 exit(1)
-
         print("----------------------Dataset Load Success!----------------------")
 
 #プリフィックス
@@ -220,13 +198,13 @@ def readupdatedata(targetdir, filelist):
     #CSVに書き込む
         dirnum = fileindex + 1
         #重みなし(集計前)の全エッジ
-        #CSVGenerater.Edgedatagenerate(dirnum, linkdata)
+        #DataFileGenerater.Edgedatagenerate(dirnum, linkdata)
         #ノード(AS)
-        CSVGenerater.Nodedatagenerate(targetdir, dirnum, alluniqueASes)
+        DataFileGenerater.Nodedatagenerate(targetdir, dirnum, alluniqueASes)
         #1ファイル分のリンク(重みつき)
-        CSVGenerater.WeightedEdgedatagenerate(targetdir, dirnum, weightedlinkdata)
+        DataFileGenerater.WeightedEdgedatagenerate(targetdir, dirnum, weightedlinkdata)
         #1ファイル分の取り消しリンク(重みあり)
-        CSVGenerater.WeightedWithdrawEdgedatagenerate(targetdir, dirnum, weightedWithdrawlinkdata)
+        DataFileGenerater.WeightedWithdrawEdgedatagenerate(targetdir, dirnum, weightedWithdrawlinkdata)
     #全体ASデータを一旦一意にする(多くなりすぎる)
         #overallASes = np.unique(overallASes)
 
@@ -236,22 +214,20 @@ def readupdatedata(targetdir, filelist):
     overallASdata = np.sort(overalluniqueASes)
     overalluniquelinks = np.unique(overalllinks)
     overalllinkdata = np.sort(overalllinks)
-
     #重み集計なしでCSVへ書き込む
-    #CSVGenerater.OverallEdgedatagenerate(overalllinkdata)
+    #DataFileGenerater.OverallEdgedatagenerate(overalllinkdata)
 #重み集計
     weightedoveralllinkdata = weightcounter(overalllinkdata)
 
 #CSVへ書き込む
     #全ファイル分のノード
-    CSVGenerater.OverallNodedatagenerate(targetdir, overallASdata)
+    DataFileGenerater.OverallNodedatagenerate(targetdir, overallASdata)
     #重み集計済みエッジ
-    CSVGenerater.OverallEdgedatagenerate(targetdir, weightedoveralllinkdata)
+    DataFileGenerater.OverallEdgedatagenerate(targetdir, weightedoveralllinkdata)
 
 #1分ごとのアナウンス、取り消しデータをピクル化
-    makePickle(everyMinutesAnnounce, "a.20080224.1824-20080224.1923")
-    makePickle(everyMinutesWithdraw, "w.20080224.1824-20080224.1923")
-
+    DataFileGenerater.makePickle(everyMinutesAnnounce, "a.20080224.1824-20080224.1923")
+    DataFileGenerater.makePickle(everyMinutesWithdraw, "w.20080224.1824-20080224.1923")
 
 #同リンクが複数ある時、その分重みをインクリメントする・・・という集計。あらかじめデータは整理されていることが前提。
 def weightcounter(data):
@@ -293,7 +269,6 @@ def count(input, pointer, output):
             break
         else:
             exit(1)
-
     nextpointer = pointer + weight
     return nextpointer, output
 
@@ -315,6 +290,59 @@ def withdrawPathSeparater(path):
         else:
             continue
 
-def makePickle(data, picklefilename):
-    picklefile = open("../data/pickles/%s.pickle" % picklefilename, mode="wb")
-    pickle.dump(data, picklefile)
+def ipToBin(ip, prefixLength): # ip = "208.65.152.0", prefixLength = 22
+    splittedIp = ip.split(".")
+    minIPNum = 256 ** 3 * int(splittedIp[0]) + 256 ** 2 * int(splittedIp[1]) + 256 ** 1 * int(splittedIp[2]) + int(splittedIp[3])
+    maxIPNum = minIPNum + (2 ** (32 - prefixLength) - 1)
+    minIPBin = bin(minIPNum)
+    maxIPBin = bin(maxIPNum)
+    if len(minIPBin) < 34:
+        headZeroes = "0" * (34 - len(minIPBin)) #"00"
+        minIPBin = headZeroes + minIPBin[2:len(minIPBin)]
+        binMaxIP = headZeroes + maxIPBin[2:len(maxIPBin)]
+    else:
+        minIPBin = minIPBin[2:len(minIPBin)]#'1101000001000001100110/0000000000'
+        maxIPBin = maxIPBin[2:len(maxIPBin)]
+    return minIPBin #32ビット
+
+#バイナリ形式32ビットの値をIPアドレス表記へ
+def binToip(bin): #'11010000010000011001100000000000'
+    firstOctet = int(bin[0:8], 2)
+    secondOctet = int(bin[8:16], 2)
+    thirdOctet = int(bin[16:24], 2)
+    fourthOctet = int(bin[24:32], 2)
+    ip = str(firstOctet) + "." + str(secondOctet) + "." + str(thirdOctet) + "." + str(fourthOctet)
+    return ip #'208.65.152.0'
+
+# minBin = ipToBin("208.65.153.0", 24)
+# multipleOriginASCheck(minBin, 24, "17557", validPrefixesDict)
+def multipleOriginASCheck(checkIPBin, prefixLength, originAS, validIPPrefixes):
+     #checkIPBinをどんどん右から削っていき、これと一致するIPプリフィックスが辞書にあるか
+    #同一のプリフィックスは他にあるか
+    checkIP = binToip(checkIPBin)
+    if checkIP in validPrefixesDict:
+        if validPrefixesDict[checkIP]["originAS"] != originAS: #オリジンASが違う!!
+            print("MOAS")
+            if validPrefixesDict[checkIP]["prefixValue"] <= prefixLength: #プリフィックス値が大きい
+                print("Dangerousness of Hijack")
+        #else: #同じオリジンASによるアナウンス(正常)
+        #    print("Valid Announce")
+    #このプリフィックスを包含するプリフィックスはあるか
+    for i in reversed(range(prefixLength)):#prefixLength = 24なら、23ビット目から
+        if checkIPBin[i] == "1":
+            inclusionIPBin = checkIPBin[:i] + "0" * (32 - i)
+            inclusionIP = binToip(inclusionIPBin)
+            #print(inclusionIP)
+            if inclusionIP in validPrefixesDict:
+                print("MOAS")
+                if validPrefixesDict[inclusionIP]["prefixLength"] <= i:  # プリフィックス値が大きい
+                    print("Conflicting with %s of AS" % inclusionIP, validPrefixesDict[inclusionIP]["originAS"])
+                    victimAnnounce = validPrefixesDict[inclusionIP]
+        else:
+            inclusionIP = binToip(inclusionIPBin)
+            #print(inclusionIP)
+            if inclusionIP in validPrefixesDict:
+                print("MOAS")
+                if validPrefixesDict[inclusionIP]["prefixLength"] <= i:  # プリフィックス値が大きい
+                    print("Conflicting with %s of AS" % inclusionIP, validPrefixesDict[inclusionIP]["originAS"])
+                    victimAnnounce = validPrefixesDict[inclusionIP]

@@ -22,7 +22,7 @@ withdrawbarPen = QPen(withdrawbarColor)
 withdrawbarBrush = QBrush(withdrawbarColor)
 barWidth = 10
 
-#アクティビティバープロット
+#アクティビティバープロット(トポロジ全体)
 class ActivityPlotView(QGraphicsView):
     def __init__(self, height=50 ,width=100 ,size=5):
         super(ActivityPlotView, self).__init__()
@@ -37,7 +37,7 @@ class ActivityPlotView(QGraphicsView):
         self.plot()
 
     def plot(self):
-
+        #時間がキーで、その時間にアナウンスされたエッジ全て(重み集計なし)
         f = open("../data/pickles/a.20080224.1824-20080224.1923.pickle", "rb")
         self.announce = pickle.load(f)
 
