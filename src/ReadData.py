@@ -22,6 +22,7 @@ ASes = np.empty((0, 1), int)
 overalllinks = [[]]
 overallWithdrawlinks = [[]]
 overallASes = []
+MOASEvents = []
 
 filenum = 4
 
@@ -67,14 +68,12 @@ def readupdatedata(targetdir, filelist):
             #word[0]="BGP4MP" word[1]= 02/24/08 word[2]= "A" or "W", word[3]= ルータのIPアドレス word[4]=アナウンスしたAS word[5]= IPプリフィックス word[6]= ASパス(最右がオリジン)
 #アナウンス
             if word[2] == "A":
-                prefix = word[5].split("/") #["131.112.0.0", "16"]
-                addressPrefix = prefix[0] #"131.112.0.0"
-                prefixLength = int(prefix[1]) # 16
+                IPPrefix = word[5] # "131.112.0.0/16"
+                addressPrefix = IPPrefix.split("/")[0] #"131.112.0.0"
+                prefixLength = int(IPPrefix.split("/")[1]) # 16
                 ASpath = word[6]  # "13 11 290"
                 ASlist = ASpath.split(" ") #[13, 11, 290]
                 originAS = ASlist[-1]  # "290"
-                #このアナウンスは以前他のASがアナウンスしたものと競合しないかをチェックする(MOASイベント)
-                MOASEventChecker.multipleOriginASCheck(addressPrefix, prefixLength, originAS, validPrefixesDict)
                 #時間(str型)
                 #月/日/年
                 announceYear = word[1].split(" ")[0].split("/")[2]
@@ -85,6 +84,12 @@ def readupdatedata(targetdir, filelist):
                 announceMinute = word[1].split(" ")[1].split(":")[1]
                 announceSecond = word[1].split(" ")[1].split(":")[2]
                 announceTime = announceYear + announceMonth + announceDay + announceHour + announceMinute
+                #このアナウンスは以前他のASがアナウンスしたものと競合しないかをチェックする(MOASイベント)返り値は被害を受けるIPプリフィックス
+                MOASVictimPrefix = MOASEventChecker.multipleOriginASCheck(addressPrefix, prefixLength, originAS, validPrefixesDict)
+                if MOASVictimPrefix:
+                    MOASVictimPrefixLength = str(validPrefixesDict[MOASVictimPrefix]["prefixLength"])
+                    victimAS = str(validPrefixesDict[MOASVictimPrefix]["originAS"])
+                    MOASEvents.append([announceTime, MOASVictimPrefix + "/" + MOASVictimPrefixLength, victimAS, IPPrefix, originAS])
                 #分が新しく切り替わったら
                 if currentMinute != announceMinute:
                     currentMinute = announceMinute
@@ -226,7 +231,8 @@ def readupdatedata(targetdir, filelist):
     DataFileGenerater.OverallNodedatagenerate(targetdir, overallASdata)
     #重み集計済みエッジ
     DataFileGenerater.OverallEdgedatagenerate(targetdir, weightedoveralllinkdata)
-
+    #MOASイベント
+    DataFileGenerater.MOASEventdatagenerate(targetdir, MOASEvents)
 #1分ごとのアナウンス、取り消しデータをピクル化
     DataFileGenerater.makePickle(everyMinutesAnnounce, "a.20080224.1824-20080224.1923")
     DataFileGenerater.makePickle(everyMinutesWithdraw, "w.20080224.1824-20080224.1923")

@@ -72,3 +72,13 @@ def OverallWithdrawEdgedatagenerate(targetdir, data):
 def makePickle(data, picklefilename):
     picklefile = open("../data/pickles/%s.pickle" % picklefilename, mode="wb")
     pickle.dump(data, picklefile)
+
+#MOASイベント
+def MOASEventdatagenerate(targetdir, data):
+    targetpath = "../data/MOAS/" + targetdir + "/MOASEvents.csv"
+    print("Writing in %s" % targetpath)
+    csvfile = open('%s' % targetpath, 'w', newline='')
+    writer = csv.writer(csvfile, lineterminator='\n')
+    for i in range(0, len(data)):
+        writer.writerow(data[i])
+    csvfile.close()

@@ -8,13 +8,13 @@ def multipleOriginASCheck(checkIP, prefixLength, originAS, validIPPrefixes):
     checkIPBin = IPAddressConverter.ipToBin(checkIP, prefixLength)
     if checkIP in validIPPrefixes:
         if validIPPrefixes[checkIP]["originAS"] != originAS: #オリジンASが違う!!
-            print("MOAS")
+            #print("MOAS")
             if validIPPrefixes[checkIP]["prefixLength"] <= prefixLength: #プリフィックス値が大きい
                 print("%s/%d of AS %s is Dangerousness of Hijacking of AS%s" % (checkIP, prefixLength, originAS, validIPPrefixes[checkIP]["originAS"]))
-                victimAnnounce = validIPPrefixes[checkIP]
-                return True, victimAnnounce
-                #else: #同じオリジンASによるアナウンス(正常)
-            #print("Valid Announce by Same Origin AS")
+                return checkIP
+            else: #同じオリジンASによるアナウンス(正常)
+                return False
+                #print("Valid Announce by Same Origin AS")
     #このプリフィックスを包含するプリフィックスはあるか
     for i in reversed(range(prefixLength)):#prefixLength = 24なら、23ビット目から
         if checkIPBin[i] == "1":
@@ -23,12 +23,12 @@ def multipleOriginASCheck(checkIP, prefixLength, originAS, validIPPrefixes):
             #print(inclusionIP)
             if inclusionIP in validIPPrefixes:
                 if validIPPrefixes[inclusionIP]["originAS"] != originAS: #オリジンASが違う!!
-                    print("MOAS")
+                    #print("MOAS")
                     if validIPPrefixes[inclusionIP]["prefixLength"] <= i:  # プリフィックス値が大きい
                         print("%s/%d of AS %s is Conflicting with %s/%d of AS" % (checkIP, prefixLength, originAS, inclusionIP, validIPPrefixes[inclusionIP]["prefixLength"]), validIPPrefixes[inclusionIP]["originAS"])
-                        victimAnnounce = validIPPrefixes[inclusionIP]
-                        return True, victimAnnounce
-                #else:  # 同じオリジンASによるアナウンス(正常)
+                        return inclusionIP
+                else:  # 同じオリジンASによるアナウンス(正常)
+                    return False
                     #print("Valid Announce by Same Origin AS")
         else:
             inclusionIPBin = checkIPBin[:i] + "0" * (32 - i)
@@ -36,10 +36,10 @@ def multipleOriginASCheck(checkIP, prefixLength, originAS, validIPPrefixes):
             #print(inclusionIP)
             if inclusionIP in validIPPrefixes:
                 if validIPPrefixes[inclusionIP]["originAS"] != originAS:  # オリジンASが違う!!
-                    print("MOAS")
+                    #print("MOAS")
                     if validIPPrefixes[inclusionIP]["prefixLength"] <= i:  # プリフィックス値が大きい
                         print("%s/%d of AS %s is Conflicting with %s/%d of AS" % (checkIP, prefixLength, originAS, inclusionIP, validIPPrefixes[inclusionIP]["prefixLength"]), validIPPrefixes[inclusionIP]["originAS"])
-                        victimAnnounce = validIPPrefixes[inclusionIP]
-                        return True, victimAnnounce
-                #else:  # 同じオリジンASによるアナウンス(正常)
+                        return inclusionIP
+                else:  # 同じオリジンASによるアナウンス(正常)
+                    return False
                     #print("Valid Announce by Same Origin AS")
