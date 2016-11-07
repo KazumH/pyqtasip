@@ -6,8 +6,8 @@ import subprocess
 import MainWindow
 
 #各事件
-youtubepakistan = "YoutubePakistan/" #ファイル数: 4
-ttnet = "TTNet/" #ファイル数: 9
+yp = "YoutubePakistan/" #ファイル数: 4
+ttn = "TTNet/" #ファイル数: 9
 
 def run():
 #ターミナルコマンド
@@ -16,10 +16,10 @@ def run():
     subprocess.call(cmd, shell=True)
     """
 #ターゲットファイルリストの取得
-    rawdatafiles = ReadData.rawfilelisting(youtubepakistan)
+    rawdatafiles = ReadData.rawfilelisting(yp)
 
-#生データ読み込みと集計、結果をCSVで出力
-    #ReadData.readupdatedata(youtubepakistan, rawdatafiles) # 第一引数は事件名
+#生データ読み込み、MOAS判定、エッジの重み集計を行ったのち、グラフデータをCSVとPickleで出力
+    ReadData.readupdatedata(yp, rawdatafiles) # 第一引数は事件名
 
 # CSVからピクル化し、PyPlotグラフで描画
     timerange = 60
@@ -27,7 +27,7 @@ def run():
     #DrawGraph.draw(youtubepakistan, number_of_files) #15分間分のファイル 4つ分読み込んでグラフへ
 
 # PyQt5のシステム起動
-    MainWindow.run()
+    #MainWindow.run()
 
 if __name__ == "__main__":
     run()
