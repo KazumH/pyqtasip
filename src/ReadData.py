@@ -234,8 +234,8 @@ def readupdatedata(targetdir, filelist):
     #MOASイベント
     DataFileGenerater.MOASEventdatagenerate(targetdir, MOASEvents)
 #1分ごとのアナウンス、取り消しデータをピクル化
-    DataFileGenerater.makePickle(everyMinutesAnnounce, "a.20080224.1824-20080224.1923")
-    DataFileGenerater.makePickle(everyMinutesWithdraw, "w.20080224.1824-20080224.1923")
+    DataFileGenerater.makePickle(everyMinutesAnnounce, "a.0802241824-0802241923")
+    DataFileGenerater.makePickle(everyMinutesWithdraw, "w.0802241824-0802241923")
 
 #同リンクが複数ある時、その分重みをインクリメントする・・・という集計。あらかじめデータは整理されていることが前提。
 def weightcounter(data):

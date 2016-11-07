@@ -21,6 +21,9 @@ withdrawbarColor = QColor.fromHsvF(15/360, 1, 1)
 withdrawbarPen = QPen(withdrawbarColor)
 withdrawbarBrush = QBrush(withdrawbarColor)
 barWidth = 10
+timeRange = 50 #分数
+announceFile = "a.0802241824-0802241923.pickle"
+withdrawFile = "w.0802241824-0802241923.pickle"
 
 #アクティビティバープロット(トポロジ全体)
 class ActivityPlotView(QGraphicsView):
@@ -38,17 +41,34 @@ class ActivityPlotView(QGraphicsView):
 
     def plot(self):
         #時間がキーで、その時間にアナウンスされたエッジ全て(重み集計なし)
-        f = open("../data/pickles/a.20080224.1824-20080224.1923.pickle", "rb")
+        f = open("../data/pickles/%s" % announceFile, "rb")
         self.announce = pickle.load(f)
 
-        f = open("../data/pickles/w.20080224.1824-20080224.1923.pickle", "rb")
+        f = open("../data/pickles/%s" % withdrawFile, "rb")
         self.withdraw = pickle.load(f)
-
+        timeRangeFrom = "0802241824"
+        timeRangeTo = "0802241923"
+        startDate = timeRangeFrom[:len(timeRangeFrom)-4]
+        startMin = int(timeRangeFrom[len(timeRangeFrom)-2:])#下2桁
+        startHour = int(timeRangeFrom[len(timeRangeFrom)-4:len(timeRangeFrom)-2])#下4桁〜下2桁
         # withdrawならそのまま
-        for i in range(30):
-            time = "08022418" + str(i + 24)
+        for i in range(timeRange):
+            min = i + startMin #時間繰り上げなしの分カウント
+            if min > 59:
+                currentMin = min % 60
+                if currentMin < 10:
+                    strMin = "0" + str(currentMin)#"00 ~ 09"
+                else:
+                    strMin = str(currentMin)#"10 ~ 59"
+            else:
+                strMin = str(min)
+            hour = min // 60
+            currentHour = startHour + hour
+            strHour = str(currentHour)
+            time = startDate + strHour + strMin
+            print(time)
             value = math.log(len(self.announce[time]), 1.1)
-            print(value)
+
             announcebar = QGraphicsRectItem(i * barWidth, 200, barWidth, -value)
             announcebar.setPen(announcebarPen)
             announcebar.setBrush(announcebarBrush)
