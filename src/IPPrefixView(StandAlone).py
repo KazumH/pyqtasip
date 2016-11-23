@@ -39,13 +39,9 @@ backgroundBrush = QBrush(QColor.fromHsvF(15/360, 1, 1))
 victimASes = []
 causeASes = []
 
-sampleVictims = ['12847', '10355', '18638', '22867', '17443', '9498', '36904', '7018', '2647', '23694', '3602', '9300', '32004', '19750', '6395', '7784', '14745', '20214', '5511', '5963', '7132', '4355', '39153', '28917', '4670', '9304', '39010', '8781', '9729', '9957', '151', '24835', '17639', '18231', '7482', '9930', '15475', '24063', '9908', '9299', '3786', '9396', '5618', '5051', '9513', '29049', '24326', '4618', '7693', '9835', '4750', '17887', '9649', '7470', '7616', '12127', '23395', '209', '3356', '8151', '9329', '18592', '6855', '34443']
-sampleCauses  = ['24921', '36363', '18797', '3602', '39946', '10255', '9498', '17443', '13807', '5583']
-sampleSelectedASes = [sampleVictims, sampleCauses]
-
-isCauseVisualized = False
+IS_CAUSE_VIS = False
 VIEWSCALE = 2 ** 9
-plotHeight = 100
+PLOTHEIGHT = 150
 
 target = "MOASEvents.csv"
 
@@ -55,26 +51,29 @@ overallTimeWindowTo = "0802241925"
 
 """
 incident = "TTNet" #0412240817 - 0412241033
-overallTimeWindowFrom = "0412240930"
-overallTimeWindowTo = "0412240945"
+overallTimeWindowFrom = "0412241000"
+overallTimeWindowTo = "0412241015"
 """
+
+DEBUG = True
+
 class IPPrefix(QGraphicsRectItem):
-    def __init__(self, data, id, victimAS, causeAS, time):
+    def __init__(self, victimP, victimAS, causeP, causeAS, time):
         QGraphicsRectItem.__init__(self)
         #self.setPen(ipSubnetColor)
         #self.setBrush(ipSubnetBrush)
         self.setFlags(QGraphicsItem.ItemIsSelectable | QGraphicsItem.ItemIsMovable)
-        self.setToolTip(data)
-        self._ipPrefix = data
-        self._pairID = id
+        self.setToolTip(victimP)
+        self._ipPrefix = victimP
         self._victimAS = victimAS
+        self._causePrefix = causeP
         self._causeAS = causeAS
         self._time = time
         self._announcedTimes = 1
         self._isSelected = False
 
     def mousePressEvent(self, event):
-        print("I'm %s Announced By AS: %s and Attacked By AS %s at %s" % (self._ipPrefix, self._victimAS, self._causeAS, self._time))
+        print("I'm %s By %s Conflicting with %s By %s at %s" % (self._ipPrefix, self._victimAS, self._causePrefix, self._causeAS, self._time))
 
     def mouseDoubleClickEvent(self, event):
         print("Call Remove Method?")
@@ -94,6 +93,7 @@ class TimeWindowBar(QGraphicsRectItem):
         self._posX = 0
         self._barNum = 0
         self._width = barWidth
+        self.setToolTip(str(TimeCalculator.timeAdd(overallTimeWindowFrom, self._barNum)))
 
     def mousePressEvent(self, event):
         self.update()
@@ -103,13 +103,14 @@ class TimeWindowBar(QGraphicsRectItem):
 
     def mouseReleaseEvent(self, event):
         self._barNum = int(event.scenePos().x() // self._width)
+        self.setToolTip(str(TimeCalculator.timeAdd(overallTimeWindowFrom, self._barNum)))
         self._posX = self._width * self._barNum
         self.setPos(QPointF(self._posX, 0))
         self.update()
         super(TimeWindowBar, self).mousePressEvent(event)
 
     def boundingRect(self):
-        return QRectF(0, 0, plotHeight, VIEWSCALE)
+        return QRectF(0, 0, PLOTHEIGHT, VIEWSCALE)
 
 class IPPrefixScene(QGraphicsScene):
     def __init__(self, *argv, **keywords):
@@ -173,7 +174,7 @@ class IPPrefixView(QGraphicsView):
             else:
                 isSameArea = False
             if isSameArea: # 重複タイプのMOASは被害者のみ可視化、ASは両方追加
-                victimPrefixBlock = IPPrefixBlockGenerate(zoomLevel, prefixPairList[i][0][0], prefixPairList[i][0][1], pairID, prefixPairList[i][0][2], prefixPairList[i][1][2], prefixPairList[i][2])
+                victimPrefixBlock = IPPrefixBlockGenerate(zoomLevel, prefixPairList[i][0][0], prefixPairList[i][0][1], prefixPairList[i][0][2], prefixPairList[i][1][0], prefixPairList[i][1][1], prefixPairList[i][1][2], prefixPairList[i][2])
                 newVictims.append(prefixPairList[i][0][2])
                 newCauses.append(prefixPairList[i][1][2])
                 victimPrefixBlock.setPen(equivalentAreaPen)
@@ -181,15 +182,15 @@ class IPPrefixView(QGraphicsView):
                 self.ipPrefixScene.addItem(victimPrefixBlock)
                 continue
             #被害アナウンスのブロックとそのASを記録
-            victimPrefixBlock = IPPrefixBlockGenerate(zoomLevel, prefixPairList[i][0][0], prefixPairList[i][0][1], pairID, prefixPairList[i][0][2], prefixPairList[i][1][2], prefixPairList[i][2])
+            victimPrefixBlock = IPPrefixBlockGenerate(zoomLevel, prefixPairList[i][0][0], prefixPairList[i][0][1], prefixPairList[i][0][2],prefixPairList[i][1][0], prefixPairList[i][1][1], prefixPairList[i][1][2], prefixPairList[i][2])
             newVictims.append(prefixPairList[i][0][2])
             newCauses.append(prefixPairList[i][1][2])
             victimPrefixBlock.setPen(victimPen)
             victimPrefixBlock.setBrush(victimBrush)
             self.ipPrefixScene.addItem(victimPrefixBlock)
             #原因アナウンスのブロックとそのASを記録
-            if isCauseVisualized:
-                causePrefixBlock = IPPrefixBlockGenerate(zoomLevel, prefixPairList[i][1][0], prefixPairList[i][1][1], pairID, prefixPairList[i][1][2], "", prefixPairList[i][2])
+            if IS_CAUSE_VIS:
+                causePrefixBlock = IPPrefixBlockGenerate(zoomLevel, prefixPairList[i][1][0], prefixPairList[i][1][1], prefixPairList[i][1][2], prefixPairList[i][1][0], prefixPairList[i][1][1], prefixPairList[i][1][2], prefixPairList[i][2])
                 newCauses.append(prefixPairList[i][1][2])
                 causePrefixBlock.setPen(causePen)
                 causePrefixBlock.setBrush(causeBrush)
@@ -217,13 +218,19 @@ class IPPrefixView(QGraphicsView):
         self._timeWindow = twValue
         self.clearAllBlocks()
         # フィルタされた新しいASリストをつくる
-        self._visualizedASes = self.addPrefixItems(self._blockList, self._zoomLevel, self._allASes)
+        self._visualizedASes = self.addPrefixItems(self._blockList, self._zoomLevel, self._selectedASes)
 
     def refreshButtonPushed(self, newASes):
         self.clearAllBlocks()
         self._selectedASes = newASes
         self._visualizedASes = self.addPrefixItems(self._blockList, self._zoomLevel, newASes)
-#アイテム(ブロック)全消し
+
+    def asnFilterRemove(self):
+        self.clearAllBlocks()
+        self._selectedASes = self._allASes
+        self._visualizedASes = self.addPrefixItems(self._blockList, self._zoomLevel, self._allASes)
+
+    #アイテム(ブロック)全消し
     def clearAllBlocks(self):
         self.ipPrefixScene.clear()
 
@@ -241,7 +248,7 @@ class FrequencyPlotView(QGraphicsView):
         # 全体ビューに当たるQGraphicsSceneの作成、設定
         self.frequencyPlotScene = FrequencyPlotScene(self)
         #サイズ設定
-        self.frequencyPlotScene.setSceneRect(QRectF(0, 0, VIEWSCALE, plotHeight))
+        self.frequencyPlotScene.setSceneRect(QRectF(0, 0, VIEWSCALE, PLOTHEIGHT))
         self.setScene(self.frequencyPlotScene)
         self.plot(target, overallTimeWindowFrom, overallTimeWindowTo)
         self.setTimeWindowBar()
@@ -273,18 +280,18 @@ class FrequencyPlotView(QGraphicsView):
             posX = i * self._barWidth
             bar = QGraphicsRectItem()
             barLength = plotData[i][1]
-            bar.setRect(QRectF(posX, plotHeight, self._barWidth, -barLength))
+            bar.setRect(QRectF(posX, PLOTHEIGHT, self._barWidth, -barLength))
             self.frequencyPlotScene.addItem(bar)
 
     def setTimeWindowBar(self):
         self.timeWindowBar1 = TimeWindowBar(self._barWidth)
-        self.timeWindowBar1.setRect(QRectF(0, 0, self._barWidth, 100))
+        self.timeWindowBar1.setRect(QRectF(0, 0, self._barWidth, PLOTHEIGHT))
         self.frequencyPlotScene.addItem(self.timeWindowBar1)
         self.timeWindowBar2 = TimeWindowBar(self._barWidth)
-        self.timeWindowBar2.setRect(QRectF(0, 0, self._barWidth, 100))
+        self.timeWindowBar2.setRect(QRectF(0, 0, self._barWidth, PLOTHEIGHT))
         self.frequencyPlotScene.addItem(self.timeWindowBar2)
 #ブロック
-def IPPrefixBlockGenerate(zoomLevel, address, length, id, victimAS, causeAS, time): #引数: ["158.65.152.0", "22"]
+def IPPrefixBlockGenerate(zoomLevel, address, length, victimAS, causeAd, causeLength, causeAS, time): #引数: ["158.65.152.0", "22"]
     #初期化
     prefixLength = int(length)
     ipPrefix = address + "/" +  length
@@ -313,9 +320,9 @@ def IPPrefixBlockGenerate(zoomLevel, address, length, id, victimAS, causeAS, tim
             if bitPairs[i] == "10":
                 posX += currentScale // 2
         currentScale //= 2
+    causePrefix = causeAd + "/" + causeLength
     #Rectオブジェクト
-    attributes = []
-    ipPrefix = IPPrefix(ipPrefix, id, victimAS, causeAS, time)
+    ipPrefix = IPPrefix(ipPrefix, victimAS, causePrefix, causeAS, time)
     if isRect:
         if bitPairs[repeatNumber] == "00":
             ipPrefix.setRect(QRectF(posX, posY, currentScale, currentScale // 2))
@@ -344,12 +351,14 @@ def targetPrefixListGenerate(file):
         words = line.split(",")
         if words[0] == overallTimeWindowFrom:
             isWithinTimeWindow = True
-        elif words[0] == overallTimeWindowTo:
+        elif words[0] == overallTimeWindowTo or words[0] == TimeCalculator.timeAdd(overallTimeWindowTo, 1):
+            if DEBUG: print(words[0])
             isWithinTimeWindow = False
             break
         # 時間窓内のMOASイベントを被害、原因にわけ、それぞれブロックにする
         if isWithinTimeWindow:
             time = words[0]
+            if DEBUG: print(time)
             victimPrefix = words[1]
             victimAS = words[2]
             causePrefix = words[3]
@@ -428,14 +437,14 @@ class MainWindow(QWidget):
         vlst = QListView()
         vlst.setMinimumSize(256, 100)
         vmdl = self.vmdl = QStandardItemModel(vlst)
-        ASListView.addItemInRow(vmdl, sampleVictims)
+        ASListView.addItemInRow(vmdl, self.ipPrefixView._allASes[0])
         #vmdl.itemChanged.connect(self.on_item_changed)
         vlst.setModel(vmdl)
         #原因ASリストビュー
         clst = QListView()
         clst.setMinimumSize(256, 100)
         cmdl = self.cmdl = QStandardItemModel(clst)
-        ASListView.addItemInRow(cmdl, sampleCauses)
+        ASListView.addItemInRow(cmdl, self.ipPrefixView._allASes[1])
         #cmdl.itemChanged.connect(self.on_item_changed)
         clst.setModel(cmdl)
         #ボタン
@@ -445,8 +454,10 @@ class MainWindow(QWidget):
         cunchckbtn = QPushButton("Enable All Check(C)")
         cunchckbtn.clicked.connect(self.cunchckbtnClicked)
         #表示AS選択後のビュー更新ボタン
-        rfrshbtn = QPushButton("Refresh")
+        rfrshbtn = QPushButton("Apply ASN Filter")
         rfrshbtn.clicked.connect(self.rfrshbtnClicked)
+        fltrrmvbtn = QPushButton("Remove ASN Filter")
+        fltrrmvbtn.clicked.connect(self.fltrrmvbtnClicked)
         #ラベル
         tmwndwlbl = self.tm = QLabel("Time Window: %s - %s" % (overallTimeWindowFrom, overallTimeWindowTo))
         zmlbl = self.zmlbl = QLabel("Zoom Level")
@@ -491,6 +502,7 @@ class MainWindow(QWidget):
         listLayout.addLayout(causeListLayout)
         widgetLayoutRight.addLayout(listLayout)
         widgetLayoutRight.addWidget(rfrshbtn)
+        widgetLayoutRight.addWidget(fltrrmvbtn)
         #左 + 右
         allLayout = QHBoxLayout()
         allLayout.addLayout(widgetLayout)
@@ -533,6 +545,10 @@ class MainWindow(QWidget):
             i += 1
         print([newVictims, newCauses])
         self.ipPrefixView.refreshButtonPushed([newVictims, newCauses])
+        self.listRefresh()
+
+    def fltrrmvbtnClicked(self):
+        self.ipPrefixView.asnFilterRemove()
         self.listRefresh()
 
     def mousePressEvent(self, event):
