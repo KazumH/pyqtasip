@@ -42,26 +42,23 @@ causeASes = []
 IS_CAUSE_VIS = False
 VIEWSCALE = 2 ** 9
 PLOTHEIGHT = 150
-
 target = "MOASEvents.csv"
-
 incident = "YoutubePakistan"
 overallTimeWindowFrom = "0802241824"
 overallTimeWindowTo = "0802241925"
 
 """
 incident = "TTNet" #0412240817 - 0412241033
-overallTimeWindowFrom = "0412241000"
-overallTimeWindowTo = "0412241015"
+overallTimeWindowFrom = "0412240910"
+overallTimeWindowTo = "0412240925"
 """
 
 DEBUG = True
 
 class IPPrefix(QGraphicsRectItem):
-    def __init__(self, victimP, victimAS, causeP, causeAS, time):
+    def __init__(self, victimP, victimAS, causeP, causeAS, time, rootView, selfView):
         QGraphicsRectItem.__init__(self)
-        #self.setPen(ipSubnetColor)
-        #self.setBrush(ipSubnetBrush)
+        self._rootView = rootView
         self.setFlags(QGraphicsItem.ItemIsSelectable | QGraphicsItem.ItemIsMovable)
         self.setToolTip(victimP)
         self._ipPrefix = victimP
@@ -70,30 +67,40 @@ class IPPrefix(QGraphicsRectItem):
         self._causeAS = causeAS
         self._time = time
         self._announcedTimes = 1
+        self._assignedViewID = selfView
         self._isSelected = False
 
     def mousePressEvent(self, event):
         print("I'm %s By %s Conflicting with %s By %s at %s" % (self._ipPrefix, self._victimAS, self._causePrefix, self._causeAS, self._time))
+        zeroNum = 32 - len(self._assignedViewID)
+        rangeFromBin = self._assignedViewID + "0" * zeroNum
+        rangeFrom = IPAddressConverter.binToIP(rangeFromBin)
+        rangeToBin = self._assignedViewID + "1" * zeroNum
+        rangeTo = IPAddressConverter.binToIP(rangeToBin)
+
+        print(self._assignedViewID, rangeFrom, rangeTo)
+        for item in self._rootView.ipPrefixView._ipPrefixScene.items():
+            if item._assignedViewID != self._assignedViewID:
+                item.setVisible(False)
 
     def mouseDoubleClickEvent(self, event):
-        print("Call Remove Method?")
         if not self._isSelected:
             self._isSelected = True
             self.setBrush(selectedColor)
         else:
             self._isSelected = False
             self.setBrush(victimBrush)
+        self._rootView.countermeasureView.dataReceive(self)
 
 class TimeWindowBar(QGraphicsRectItem):
     def __init__(self, barWidth):
         QGraphicsRectItem.__init__(self)
         self.setPen(victimPen)
         self.setBrush(victimBrush)
-        #self.setFlags(QGraphicsItem.ItemIsSelectable | QGraphicsItem.ItemIsMovable)
         self._posX = 0
         self._barNum = 0
         self._width = barWidth
-        self.setToolTip(str(TimeCalculator.timeAdd(overallTimeWindowFrom, self._barNum)))
+        #self.setToolTip(str(TimeCalculator.timeAdd(overallTimeWindowFrom, self._barNum)))
 
     def mousePressEvent(self, event):
         self.update()
@@ -103,7 +110,7 @@ class TimeWindowBar(QGraphicsRectItem):
 
     def mouseReleaseEvent(self, event):
         self._barNum = int(event.scenePos().x() // self._width)
-        self.setToolTip(str(TimeCalculator.timeAdd(overallTimeWindowFrom, self._barNum)))
+        #self.setToolTip(str(TimeCalculator.timeAdd(overallTimeWindowFrom, self._barNum)))
         self._posX = self._width * self._barNum
         self.setPos(QPointF(self._posX, 0))
         self.update()
@@ -117,22 +124,24 @@ class IPPrefixScene(QGraphicsScene):
         super(IPPrefixScene, self).__init__(*argv, **keywords)
 
 class IPPrefixView(QGraphicsView):
-    def __init__(self, parent=None): #親がいないウィジェットはウィンドウになる
+    def __init__(self, parentQWidget): #親がいないウィジェットはウィンドウになる
         super(IPPrefixView, self).__init__()
         # QGraphicsViewの設定
         #self.setCacheMode(QGraphicsView.CacheBackground)
-        self.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform | QPainter.TextAntialiasing)
+        self._parentQWidget = parentQWidget
+        self.setRenderHints(QPainter.Antialiasing)
         self._zoomLevel = 0
+        self.setRenderHint(QPainter.Antialiasing)
         self._prefixLengthThresholdFrom = 1
         self._prefixLengthThresholdTo = 32
         self._timeWindow = [overallTimeWindowFrom, overallTimeWindowTo]
         # 全体ビューに当たるQGraphicsSceneの作成、設定
-        self.ipPrefixScene = IPPrefixScene(self)
+        self._ipPrefixScene = IPPrefixScene(self)
         #サイズ設定
-        self.ipPrefixScene.setSceneRect(QRectF(0, 0, VIEWSCALE, VIEWSCALE))
+        self._ipPrefixScene.setSceneRect(QRectF(0, 0, VIEWSCALE, VIEWSCALE))
         #背景色
         #self.ipPrefixScene.setBackgroundBrush(backgroundBrush)
-        self.setScene(self.ipPrefixScene)
+        self.setScene(self._ipPrefixScene)
         #データファイルから指定された全体時間窓内のMOASイベントを抽出
         self._blockList, self._allASes = targetPrefixListGenerate(target)
         self._selectedASes = self._allASes
@@ -167,34 +176,59 @@ class IPPrefixView(QGraphicsView):
             pairID = i
             # プリフィックス長フィルタリング
             # 被害プリフィックス長がフィルタ(from)より短いor(To)より長い時はそのMOASを表示しない
-            if (int(prefixPairList[i][0][1]) < self._prefixLengthThresholdFrom or int(prefixPairList[i][0][1]) > self._prefixLengthThresholdTo):
+            if (int(prefixPairList[i][0][1]) < self._prefixLengthThresholdFrom or
+                        int(prefixPairList[i][0][1]) > self._prefixLengthThresholdTo):
                 continue
             if prefixPairList[i][0][0] == prefixPairList[i][1][0]: #被害範囲 ＝ 原因範囲
                 isSameArea = True
             else:
                 isSameArea = False
             if isSameArea: # 重複タイプのMOASは被害者のみ可視化、ASは両方追加
-                victimPrefixBlock = IPPrefixBlockGenerate(zoomLevel, prefixPairList[i][0][0], prefixPairList[i][0][1], prefixPairList[i][0][2], prefixPairList[i][1][0], prefixPairList[i][1][1], prefixPairList[i][1][2], prefixPairList[i][2])
+                victimPrefixBlock = IPPrefixBlockGenerate(zoomLevel,
+                                                          prefixPairList[i][0][0],
+                                                          prefixPairList[i][0][1],
+                                                          prefixPairList[i][0][2],
+                                                          prefixPairList[i][1][0],
+                                                          prefixPairList[i][1][1],
+                                                          prefixPairList[i][1][2],
+                                                          prefixPairList[i][2],
+                                                          self._parentQWidget)
                 newVictims.append(prefixPairList[i][0][2])
                 newCauses.append(prefixPairList[i][1][2])
                 victimPrefixBlock.setPen(equivalentAreaPen)
                 victimPrefixBlock.setBrush(equivalentAreaBrush)
-                self.ipPrefixScene.addItem(victimPrefixBlock)
+                self._ipPrefixScene.addItem(victimPrefixBlock)
                 continue
             #被害アナウンスのブロックとそのASを記録
-            victimPrefixBlock = IPPrefixBlockGenerate(zoomLevel, prefixPairList[i][0][0], prefixPairList[i][0][1], prefixPairList[i][0][2],prefixPairList[i][1][0], prefixPairList[i][1][1], prefixPairList[i][1][2], prefixPairList[i][2])
+            victimPrefixBlock = IPPrefixBlockGenerate(zoomLevel,
+                                                      prefixPairList[i][0][0],
+                                                      prefixPairList[i][0][1],
+                                                      prefixPairList[i][0][2],
+                                                      prefixPairList[i][1][0],
+                                                      prefixPairList[i][1][1],
+                                                      prefixPairList[i][1][2],
+                                                      prefixPairList[i][2],
+                                                      self._parentQWidget)
             newVictims.append(prefixPairList[i][0][2])
             newCauses.append(prefixPairList[i][1][2])
             victimPrefixBlock.setPen(victimPen)
             victimPrefixBlock.setBrush(victimBrush)
-            self.ipPrefixScene.addItem(victimPrefixBlock)
+            self._ipPrefixScene.addItem(victimPrefixBlock)
             #原因アナウンスのブロックとそのASを記録
             if IS_CAUSE_VIS:
-                causePrefixBlock = IPPrefixBlockGenerate(zoomLevel, prefixPairList[i][1][0], prefixPairList[i][1][1], prefixPairList[i][1][2], prefixPairList[i][1][0], prefixPairList[i][1][1], prefixPairList[i][1][2], prefixPairList[i][2])
+                causePrefixBlock = IPPrefixBlockGenerate(zoomLevel,
+                                                         prefixPairList[i][1][0],
+                                                         prefixPairList[i][1][1],
+                                                         prefixPairList[i][1][2],
+                                                         prefixPairList[i][1][0],
+                                                         prefixPairList[i][1][1],
+                                                         prefixPairList[i][1][2],
+                                                         prefixPairList[i][2],
+                                                         self._parentQWidget)
                 newCauses.append(prefixPairList[i][1][2])
                 causePrefixBlock.setPen(causePen)
                 causePrefixBlock.setBrush(causeBrush)
-                self.ipPrefixScene.addItem(causePrefixBlock)
+                self._ipPrefixScene.addItem(causePrefixBlock)
         #フィルタされたASリストを返り値にさせる
         newASes = [np.unique(newVictims), np.unique(newCauses)]
 
@@ -232,7 +266,7 @@ class IPPrefixView(QGraphicsView):
 
     #アイテム(ブロック)全消し
     def clearAllBlocks(self):
-        self.ipPrefixScene.clear()
+        self._ipPrefixScene.clear()
 
 #頻度のプロット
 class FrequencyPlotScene(QGraphicsScene):
@@ -291,7 +325,7 @@ class FrequencyPlotView(QGraphicsView):
         self.timeWindowBar2.setRect(QRectF(0, 0, self._barWidth, PLOTHEIGHT))
         self.frequencyPlotScene.addItem(self.timeWindowBar2)
 #ブロック
-def IPPrefixBlockGenerate(zoomLevel, address, length, victimAS, causeAd, causeLength, causeAS, time): #引数: ["158.65.152.0", "22"]
+def IPPrefixBlockGenerate(zoomLevel, address, length, victimAS, causeAd, causeLength, causeAS, time, view): #引数: ["158.65.152.0", "22"]
     #初期化
     prefixLength = int(length)
     ipPrefix = address + "/" +  length
@@ -307,8 +341,8 @@ def IPPrefixBlockGenerate(zoomLevel, address, length, victimAS, causeAd, causeLe
     headerBits = ""
 #座標、サイズ決定
     #頭2ビットずつ見て座標を決める
-    #拡大適用後の無視する先頭ビット
-    for i in range(startNumber):
+    #拡大適用後の無視する先頭ビット(ビューのIDとして使う?)
+    for i in range(startNumber - 1):
         headerBits = headerBits + bitPairs[i]
     #先頭の幾つかのビットペアを無視して座標決めすることで拡大表現
     for i in range(startNumber, repeatNumber):
@@ -322,7 +356,7 @@ def IPPrefixBlockGenerate(zoomLevel, address, length, victimAS, causeAd, causeLe
         currentScale //= 2
     causePrefix = causeAd + "/" + causeLength
     #Rectオブジェクト
-    ipPrefix = IPPrefix(ipPrefix, victimAS, causePrefix, causeAS, time)
+    ipPrefix = IPPrefix(ipPrefix, victimAS, causePrefix, causeAS, time, view, headerBits)
     if isRect:
         if bitPairs[repeatNumber] == "00":
             ipPrefix.setRect(QRectF(posX, posY, currentScale, currentScale // 2))
@@ -407,7 +441,7 @@ class MainWindow(QWidget):
         # 全体ウインドウ
         self.setWindowTitle("IP Prefixes Vis")
         # プリフィックスビュー部分
-        self.ipPrefixView = IPPrefixView()
+        self.ipPrefixView = IPPrefixView(self)
         # 対策案構築ビュー部分
         self.countermeasureView = CountermeasureView.CountermeasureView()
         # 時間窓プロット部分
@@ -435,23 +469,24 @@ class MainWindow(QWidget):
         plftosldr.valueChanged.connect(self.prefixLengthSliderValueChanged)
         #被害ASリストビュー
         vlst = QListView()
-        vlst.setMinimumSize(256, 100)
+        vlst.setFrameRect(QRect(0, 0, 200, 100))
+        vlst.setMinimumSize(200, 100)
         vmdl = self.vmdl = QStandardItemModel(vlst)
         ASListView.addItemInRow(vmdl, self.ipPrefixView._allASes[0])
         #vmdl.itemChanged.connect(self.on_item_changed)
         vlst.setModel(vmdl)
         #原因ASリストビュー
         clst = QListView()
-        clst.setMinimumSize(256, 100)
+        clst.setMinimumSize(200, 100)
         cmdl = self.cmdl = QStandardItemModel(clst)
         ASListView.addItemInRow(cmdl, self.ipPrefixView._allASes[1])
         #cmdl.itemChanged.connect(self.on_item_changed)
         clst.setModel(cmdl)
         #ボタン
         #リストのチェック全消しボタン
-        vunchckbtn = QPushButton("Enable All Check(V)")
+        vunchckbtn = QPushButton("UnCheck All(V)")
         vunchckbtn.clicked.connect(self.vunchckbtnClicked)
-        cunchckbtn = QPushButton("Enable All Check(C)")
+        cunchckbtn = QPushButton("UnCheck All(C)")
         cunchckbtn.clicked.connect(self.cunchckbtnClicked)
         #表示AS選択後のビュー更新ボタン
         rfrshbtn = QPushButton("Apply ASN Filter")
@@ -460,23 +495,23 @@ class MainWindow(QWidget):
         fltrrmvbtn.clicked.connect(self.fltrrmvbtnClicked)
         #ラベル
         tmwndwlbl = self.tm = QLabel("Time Window: %s - %s" % (overallTimeWindowFrom, overallTimeWindowTo))
-        zmlbl = self.zmlbl = QLabel("Zoom Level")
-        plffrmlbl = self.thfrm = QLabel("Prefix Length Filter: From")
-        plftolbl = self.thto = QLabel("Prefix Length Filter: To")
-        vaslbl = self.vaslbl = QLabel("Victim AS List")
-        caslbl = self.caslbl = QLabel("Cause AS List")
+        zmlbl = self.zmlbl = QLabel("Zoom Level: 0")
+        plffrmlbl = self.thfrm = QLabel("Prefix Length Filter From: /1")
+        plftolbl = self.thto = QLabel("Prefix Length Filter To: /32")
+        vaslbl = self.vaslbl = QLabel("Victim AS#: " + str(len(self.ipPrefixView._visualizedASes[0])))
+        caslbl = self.caslbl = QLabel("Cause AS#: " + str(len(self.ipPrefixView._visualizedASes[1])))
         #各ウィジェットのレイアウト
         #左
         widgetLayout = QVBoxLayout()
         widgetLayout.addWidget(self.ipPrefixView)
-        widgetLayout.addWidget(tmwndwlbl)
-        widgetLayout.addWidget(self.frequencyPlotView)
         widgetLayout.addWidget(zmlbl)
         widgetLayout.addWidget(zlsldr)
         widgetLayout.addWidget(plffrmlbl)
         widgetLayout.addWidget(plffrmsldr)
         widgetLayout.addWidget(plftolbl)
         widgetLayout.addWidget(plftosldr)
+        widgetLayout.addWidget(tmwndwlbl)
+        widgetLayout.addWidget(self.frequencyPlotView)
         #右側
         widgetLayoutRight = QVBoxLayout()
         widgetLayoutRight.addWidget(self.countermeasureView)
@@ -513,8 +548,9 @@ class MainWindow(QWidget):
         self.vmdl.clear()# リストを全消去
         self.cmdl.clear()# リストを全消去
         ASListView.addItemInRow(self.vmdl, self.ipPrefixView._visualizedASes[0])
+        self.vaslbl.setText("Victim ASes: " + str(len(self.ipPrefixView._visualizedASes[0])))
         ASListView.addItemInRow(self.cmdl, self.ipPrefixView._visualizedASes[1])
-
+        self.caslbl.setText("Cause ASes: " + str(len(self.ipPrefixView._visualizedASes[1])))
     def vunchckbtnClicked(self):
         i = 0
         while self.vmdl.item(i):
@@ -528,9 +564,6 @@ class MainWindow(QWidget):
                 self.cmdl.item(i).setCheckState(False)
             i += 1
     def rfrshbtnClicked(self):
-        selectedItems = self.ipPrefixView.ipPrefixScene.items()
-        print(selectedItems[0])
-        self.countermeasureView.dataReceive(selectedItems[0])
         i = 0
         newVictims = []
         newCauses = []
@@ -561,6 +594,7 @@ class MainWindow(QWidget):
         print(newTimeWindow)
         self.ipPrefixView.timeWindowChanged(newTimeWindow)
         self.listRefresh()
+        self.tm.setText("Time Window: " + newTimeWindowFrom + " - " + newTimeWindowTo)
 
     def zoomLevelSliderValueChanged(self):
         newZoomLevel = self.zoomLevelSlider.value()
@@ -572,6 +606,7 @@ class MainWindow(QWidget):
         newTimeWindow = [newTimeWindowFrom, newTimeWindowTo]
         self.ipPrefixView.zoomLevelChanged(newZoomLevel, newTimeWindow)
         self.listRefresh()
+        self.zmlbl.setText("Zoom Level: " + str(newZoomLevel - 1) + " | View#: " + str(4 ** (newZoomLevel - 1)))
 
     def prefixLengthSliderValueChanged(self):
         newPrefixLengthFilterFrom = self.prefixLengthFromSlider.value()
@@ -584,6 +619,8 @@ class MainWindow(QWidget):
         newTimeWindow = [newTimeWindowFrom, newTimeWindowTo]
         self.ipPrefixView.prefixLengthChanged(newPrefixLengthFilterFrom, newPrefixLengthFilterTo, newTimeWindow)
         self.listRefresh()
+        self.thfrm.setText("Prefix Length Filter From: /" + str(newPrefixLengthFilterFrom))
+        self.thto.setText("Prefix Length Filter To: /" + str(newPrefixLengthFilterTo))
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     mainWindow = MainWindow()
